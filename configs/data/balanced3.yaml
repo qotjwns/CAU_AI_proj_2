@@ -1,0 +1,10 @@
+seed: 42
+annotation_path: data/raw/coco_rem/instances_valrem.json
+image_dir: data/raw/coco/val2017
+output_dir: data/balanced3
+exclude_image_ids: []
+min_bbox_area_ratio: 0.05
+exclude_crowd_positives: true
+num_classes: 20
+categories: []
+prompt: "Is the object category '{object}' present in all 3 images? Please answer with Yes or No."
