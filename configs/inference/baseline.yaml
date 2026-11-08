@@ -1,0 +1,9 @@
+inference_method: baseline
+
+model_config: configs/models/qwen2_5_vl_3b.yaml
+
+cases_jsonl:
+  - data/balanced3/inference_cases/inference_groups_top20_seed42_A_cases.jsonl
+  - data/balanced3/inference_cases/inference_groups_top20_seed42_B_cases.jsonl
+
+output_dir: reports/inference/baseline/qwen2_5_vl_3b
