@@ -1,7 +1,6 @@
 # python src/data_manipulate/make_pool.py --config configs/data/balanced3.yaml
 
 import argparse
-import os
 from pathlib import Path
 import sys
 
@@ -10,7 +9,7 @@ if __package__ in (None, ""):
 
 from src.common.data import read_json, write_json
 from src.common.config import load_config
-from src.common.paths import DEFAULT_CONFIG, PROJECT_ROOT
+from src.common.paths import DEFAULT_CONFIG, project_relative_path
 from src.data_manipulate.make_inference_pool import generate_groups
 from src.data_manipulate.build_cases import save_cases
 
@@ -93,7 +92,7 @@ def save_pools(data, pools, config):
         path = config["image_dir"] / image["file_name"]
         image_records[image_id] = {
             "image_id": image_id,
-            "image_path": Path(os.path.relpath(path, PROJECT_ROOT)).as_posix(),
+            "image_path": project_relative_path(path),
         }
 
     for category in sorted(data["categories"], key=lambda item: item["id"]):
@@ -107,7 +106,7 @@ def save_pools(data, pools, config):
                 "category_id": category_id,
                 "category_name": category["name"],
                 "pool_type": pool_type,
-                "annotation_source": Path(os.path.relpath(config["annotation_path"], PROJECT_ROOT)).as_posix(),
+                "annotation_source": project_relative_path(config["annotation_path"]),
                 "image_path_base": "project_root",
                 "image_count": len(image_ids),
             }

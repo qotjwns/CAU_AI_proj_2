@@ -11,7 +11,7 @@ if __package__ in (None, ""):
 from tqdm import tqdm
 import yaml
 
-from src.common.paths import PROJECT_ROOT, project_path
+from src.common.paths import PROJECT_ROOT, project_path, project_relative_path
 
 
 DEFAULT_CONFIG = PROJECT_ROOT / "configs" / "inference" / "baseline.yaml"
@@ -116,7 +116,7 @@ def build_result(case, inference, config):
         "model_name": config["model_name"],
         "object": case["class"],
         "composition": "".join(case["image_labels"]),
-        "images": [(image_dir / name).as_posix() for name in case["image_order"]],
+        "images": [project_relative_path(image_dir / name) for name in case["image_order"]],
         "per_image_gt": [int(label == "P") for label in case["image_labels"]],
         "negative_indices": case["negative_positions"],
         "prompt": case["prompt"],

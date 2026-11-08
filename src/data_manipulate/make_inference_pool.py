@@ -11,7 +11,7 @@ if __package__ in (None, ""):
 
 from src.common.data import normalize_category, read_json, write_json
 from src.common.config import load_config
-from src.common.paths import DEFAULT_CONFIG
+from src.common.paths import DEFAULT_CONFIG, project_relative_path
 
 
 IMAGES_PER_LABEL = 8
@@ -96,8 +96,11 @@ def generate_groups(config, pool_dir=None, output_dir=None):
         names = "\n".join(path.name for path in category_dirs)
         scope = f"classes{len(category_dirs)}_{hashlib.sha256(names.encode()).hexdigest()[:8]}"
     output_path = output_dir / f"inference_groups_{scope}_seed{config['seed']}.json"
+    saved_config = dict(config)
+    for key in ("annotation_path", "image_dir", "output_dir"):
+        saved_config[key] = project_relative_path(config[key])
     write_json({
-        "config": {key: str(value) if isinstance(value, Path) else value for key, value in config.items()},
+        "config": saved_config,
         "groups": groups,
     }, output_path)
     print(f"전체: {len(category_dirs)}클래스, {len(groups)}그룹")

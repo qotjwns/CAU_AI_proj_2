@@ -6,7 +6,6 @@ from collections import Counter
 import hashlib
 from itertools import combinations
 import json
-import os
 from pathlib import Path
 import random
 import sys
@@ -15,7 +14,7 @@ if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from src.common.data import read_json
-from src.common.paths import PROJECT_ROOT, project_path
+from src.common.paths import project_path, project_relative_path
 
 
 def make_case(group_id, group, pair_id, images, composition, config, mode):
@@ -29,7 +28,7 @@ def make_case(group_id, group, pair_id, images, composition, config, mode):
         "class": group["class"],
         "composition": "+".join(labels),
         "image_path_base": "project_root",
-        "image_dir": Path(os.path.relpath(project_path(config["image_dir"]), PROJECT_ROOT)).as_posix(),
+        "image_dir": project_relative_path(config["image_dir"]),
         "image_order": list(images),
         "image_ids": [group["image_id_by_name"][name] for name in images],
         "image_labels": labels,

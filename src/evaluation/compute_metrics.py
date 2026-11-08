@@ -14,7 +14,7 @@ if __package__ in (None, ""):
 
 from tqdm import tqdm
 
-from src.common.paths import project_path
+from src.common.paths import project_path, project_relative_path
 
 
 LABELS = ("Yes", "No")
@@ -229,7 +229,7 @@ def main():
     paths = [project_path(path) for path in args.results_jsonl]
     records = load_results(paths)
     report = compute_metrics(records)
-    report["source_files"] = [path.as_posix() for path in paths]
+    report["source_files"] = [project_relative_path(path) for path in paths]
     output_dir = project_path(args.output_dir)
     save_metrics(report, output_dir)
     for row in report["by_mode"]:
