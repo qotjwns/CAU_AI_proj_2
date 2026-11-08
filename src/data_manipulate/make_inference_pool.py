@@ -1,3 +1,5 @@
+# python src/data_manipulate/make_inference_pool.py --config configs/data/balanced3.yaml
+
 import argparse
 import hashlib
 from pathlib import Path

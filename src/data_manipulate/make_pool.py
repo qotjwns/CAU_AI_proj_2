@@ -1,3 +1,5 @@
+# python src/data_manipulate/make_pool.py --config configs/data/balanced3.yaml
+
 import argparse
 import os
 from pathlib import Path

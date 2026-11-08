@@ -1,3 +1,6 @@
+# python src/data_manipulate/build_cases.py --groups-json data/balanced3/inference_pools/inference_groups_top20_seed42.json --mode A
+# python src/data_manipulate/build_cases.py --groups-json data/balanced3/inference_pools/inference_groups_top20_seed42.json --mode B
+
 import argparse
 from collections import Counter
 import hashlib

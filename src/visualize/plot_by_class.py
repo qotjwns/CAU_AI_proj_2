@@ -1,3 +1,5 @@
+# python src/visualize/plot_by_class.py --cases-jsonl data/balanced3/inference_cases/inference_groups_top20_seed42_A_cases.jsonl data/balanced3/inference_cases/inference_groups_top20_seed42_B_cases.jsonl --limit 2
+
 import argparse
 import json
 from pathlib import Path

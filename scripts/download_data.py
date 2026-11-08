@@ -1,4 +1,4 @@
-# python3 scripts/download_data.py
+# python scripts/download_data.py
 
 from pathlib import Path
 from tempfile import TemporaryDirectory

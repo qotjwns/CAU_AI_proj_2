@@ -1,5 +1,5 @@
-# python3 scripts/download_model.py
-# python3 scripts/download_model.py --config configs/models/qwen2_5_vl_3b.yaml
+# python scripts/download_model.py --config configs/models/qwen2_5_vl_3b.yaml
+# python scripts/download_model.py --config configs/models/qwen2_5_vl_7b.yaml
 
 import argparse
 from pathlib import Path

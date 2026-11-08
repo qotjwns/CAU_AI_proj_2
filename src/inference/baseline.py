@@ -1,3 +1,5 @@
+# python src/inference/baseline.py --config configs/inference/baseline.yaml
+
 import argparse
 import json
 from pathlib import Path
