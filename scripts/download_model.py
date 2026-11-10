@@ -1,19 +1,16 @@
-# python scripts/download_model.py --config configs/models/qwen2_5_vl_3b.yaml
-# python scripts/download_model.py --config configs/models/qwen2_5_vl_7b.yaml
-
 import argparse
 from pathlib import Path
 
-import yaml
 from huggingface_hub import snapshot_download
 
+from src.common.config import read_yaml
+from src.common.paths import PROJECT_ROOT
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
 MODEL_DIR = PROJECT_ROOT / "cache" / "models"
-DEFAULT_MODEL = "Qwen/Qwen2.5-VL-3B-Instruct"
+DEFAULT_CONFIG = PROJECT_ROOT / "configs" / "models" / "qwen2_5_vl_3b.yaml"
 
 
-def download_model(model_name: str = DEFAULT_MODEL) -> Path:
+def download_model(model_name: str) -> Path:
     save_dir = MODEL_DIR / model_name
 
     print(f"다운로드 모델: {model_name}", flush=True)
@@ -30,16 +27,11 @@ def download_model(model_name: str = DEFAULT_MODEL) -> Path:
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--config", type=Path)
+    parser.add_argument("--config", type=Path, default=DEFAULT_CONFIG)
     args = parser.parse_args()
 
-    config = {}
-    if args.config:
-        with args.config.expanduser().open(encoding="utf-8") as file:
-            config = yaml.safe_load(file) or {}
-
-    model_name = config.get("model_name") or DEFAULT_MODEL
-    model_path = download_model(model_name=model_name)
+    config = read_yaml(args.config)
+    model_path = download_model(config["model_name"])
     print(f"다운로드 완료: {model_path}", flush=True)
 
 

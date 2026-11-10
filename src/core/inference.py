@@ -1,5 +1,3 @@
-"""Inference for one case, including first-generated-token logits."""
-
 from src.core.prompts import build_messages, parse_prediction
 
 
@@ -30,7 +28,6 @@ def infer_case(case, model, processor, answer_token_ids):
         skip_special_tokens=True,
         clean_up_tokenization_spaces=False,
     )
-    # Raw logits at the FIRST generated position, before decoding processors.
     first_logits = generated.logits[0][0]
     yes_logit, no_logit = [first_logits[token_id].item() for token_id in answer_token_ids]
     image_tokens = (

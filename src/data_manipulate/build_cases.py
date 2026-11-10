@@ -1,5 +1,3 @@
-"""Construct and save the A/B cases from sampled image groups."""
-
 from collections import Counter
 import hashlib
 from itertools import combinations

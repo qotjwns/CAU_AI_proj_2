@@ -1,5 +1,3 @@
-"""Build and save per-category positive and negative candidate pools."""
-
 from src.common.data import write_json
 from src.common.paths import project_relative_path
 
@@ -50,14 +48,13 @@ def summarize_pools(data, pools, config):
         category_id = category["id"]
         pool = pools[category_id]
 
-        row = {
+        rows.append({
             "category_id": category_id,
             "category_name": category["name"],
             "positive_count": len(pool["positive"]),
             "negative_candidate_count": len(pool["negative_candidates"]),
             "excluded_positive_count": len(pool["excluded_positive"]),
-        }
-        rows.append(row)
+        })
 
     rows.sort(key=lambda row: (-row["positive_count"], row["category_id"]))
     return {
@@ -76,14 +73,13 @@ def summarize_pools(data, pools, config):
 
 
 def save_pools(data, pools, config):
-    images = {image["id"]: image for image in data["images"]}
-    image_records = {}
-    for image_id, image in images.items():
-        path = config["image_dir"] / image["file_name"]
-        image_records[image_id] = {
-            "image_id": image_id,
-            "image_path": project_relative_path(path),
+    image_records = {
+        image["id"]: {
+            "image_id": image["id"],
+            "image_path": project_relative_path(config["image_dir"] / image["file_name"]),
         }
+        for image in data["images"]
+    }
 
     for category in sorted(data["categories"], key=lambda item: item["id"]):
         category_id = category["id"]

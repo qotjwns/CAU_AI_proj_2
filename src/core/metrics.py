@@ -1,11 +1,9 @@
-"""Compute A/B metrics from normalized prediction records."""
-
 from collections import Counter, defaultdict
 from itertools import combinations, pairwise
 from statistics import fmean
 
+from src.core.prompts import LABELS
 
-LABELS = ("Yes", "No")
 COMPOSITIONS = {"A": ("PPP", "PPN", "PNN", "NNN"), "B": ("NPP", "PNP", "PPN")}
 
 
@@ -74,7 +72,6 @@ def compute_pairs(records):
             variants = {row["composition"]: row for row in rows}
             if len(variants) != len(rows):
                 raise ValueError(f"Duplicate composition in pair: {mode}, {pair_id}")
-            # Compare the same complete cohort across all transitions.
             if set(variants) != set(order):
                 continue
             complete += 1
@@ -111,7 +108,6 @@ def compute_pairs(records):
             "valid_complete_pairs": valid_complete,
             "all_correct_pairs": all_correct,
             "all_correct_rate": ratio(all_correct, complete),
-            # Only B keeps the same ground truth under every permutation.
             "order_agreement_rate": ratio(consistent, valid_complete) if mode == "B" else None,
         })
 

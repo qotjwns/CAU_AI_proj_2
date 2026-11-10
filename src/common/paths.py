@@ -11,5 +11,4 @@ def project_path(path):
 
 
 def project_relative_path(path):
-    """Return a project-relative POSIX path for saved data and configuration."""
     return Path(os.path.relpath(project_path(path), PROJECT_ROOT)).as_posix()

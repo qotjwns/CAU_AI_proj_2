@@ -19,8 +19,6 @@ def load_config(path=DEFAULT_CONFIG):
 
 def load_inference_config(path):
     config = read_yaml(project_path(path))
-    if config["inference_method"] != "baseline":
-        raise ValueError("inference_method must be baseline")
     model_config = read_yaml(project_path(config["model_config"]))
     config["model_name"] = model_config["model_name"]
     config["cases_jsonl"] = [project_path(path) for path in config["cases_jsonl"]]

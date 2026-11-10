@@ -55,42 +55,58 @@ scripts/
 └── build_cases.py
 ```
 
-리팩토링은 기존 1번 실험의 함수와 CLI를 분리하는 범위입니다.
-데이터 선정 기준, 시드, A/B 구성, 케이스 ID, 결과 필드와 저장 경로는 기존 규칙을 사용합니다.
-
 ## 4. 실행방법
 
-가상환경을 활성화한 뒤 프로젝트 루트에서 실행합니다. 아래 명령은 기본 모델인 Qwen2.5-VL-3B 기준입니다.
+가상환경을 활성화한 뒤 프로젝트 루트에서 `python -m ...` 형태로 실행합니다.
+아래 명령은 기본 모델인 Qwen2.5-VL-3B 기준입니다.
 설정과 결과 파일에 저장되는 경로는 프로젝트 루트 기준 상대경로를 사용합니다.
 
 필요한 패키지와 데이터, 모델을 받습니다.
 
 ```bash
 python -m pip install -r requirements.txt
-python scripts/download_data.py
-python scripts/download_model.py --config configs/models/qwen2_5_vl_3b.yaml
+python -m scripts.download_data
+python -m scripts.download_model --config configs/models/qwen2_5_vl_3b.yaml
 ```
 
 이미지 후보를 고르고 A/B 케이스를 만듭니다.
 
 ```bash
-python scripts/build_pools.py --config configs/data/balanced3.yaml
-python scripts/build_groups.py --config configs/data/balanced3.yaml
-python scripts/build_cases.py --groups-json data/balanced3/inference_pools/inference_groups_top20_seed42.json --mode A
-python scripts/build_cases.py --groups-json data/balanced3/inference_pools/inference_groups_top20_seed42.json --mode B
+python -m scripts.build_pools --config configs/data/balanced3.yaml
+python -m scripts.build_groups --config configs/data/balanced3.yaml
+python -m scripts.build_cases --groups-json data/balanced3/inference_pools/inference_groups_top20_seed42.json --mode A
+python -m scripts.build_cases --groups-json data/balanced3/inference_pools/inference_groups_top20_seed42.json --mode B
 ```
 
 Baseline 추론을 실행합니다.
 
 ```bash
-python experiments/step1_baseline/run.py --config configs/experiments/step1.yaml
+python -m experiments.step1_baseline.run --config configs/experiments/step1.yaml
+```
+
+파일럿으로 총 10개 케이스만 추론하려면 다음 명령을 사용합니다.
+
+```bash
+python -m experiments.step1_baseline.run --limit 10
+```
+
+`--limit`은 설정 파일에 나열된 입력을 순서대로 읽어 전체에서 최대 해당 개수만 처리합니다.
+기본 설정은 A 파일이 먼저이므로 위 명령은 A의 앞 10개 케이스를 처리합니다.
+결과는 `reports/inference/baseline/qwen2_5_vl_3b/pilot_10/`에 저장합니다.
+케이스 단위로 자르므로 마지막 비교 쌍은 일부만 포함될 수 있습니다.
+
+저장 위치를 직접 지정하거나 파일럿을 다시 실행할 때는 새 폴더를 지정합니다.
+기존 결과 파일은 덮어쓰지 않습니다.
+
+```bash
+python -m experiments.step1_baseline.run --limit 10 --output-dir reports/inference/pilot_10_run2
 ```
 
 결과를 집계하고 그래프로 저장합니다. 추론 결과가 이미 있으면 이 단계부터 실행하면 됩니다.
 
 ```bash
-python experiments/step1_baseline/analyze.py --results-jsonl reports/inference/baseline/qwen2_5_vl_3b/inference_groups_top20_seed42_A_results.jsonl reports/inference/baseline/qwen2_5_vl_3b/inference_groups_top20_seed42_B_results.jsonl --output-dir reports/metrics/baseline/qwen2_5_vl_3b
-python experiments/step1_baseline/visualize.py --metrics-json reports/metrics/baseline/qwen2_5_vl_3b/metrics.json
+python -m experiments.step1_baseline.analyze --results-jsonl reports/inference/baseline/qwen2_5_vl_3b/inference_groups_top20_seed42_A_results.jsonl reports/inference/baseline/qwen2_5_vl_3b/inference_groups_top20_seed42_B_results.jsonl --output-dir reports/metrics/baseline/qwen2_5_vl_3b
+python -m experiments.step1_baseline.visualize --metrics-json reports/metrics/baseline/qwen2_5_vl_3b/metrics.json
 ```
 
 추론 결과는 `reports/inference/`, 메트릭과 그래프는 `reports/metrics/` 아래에 저장됩니다.
@@ -98,9 +114,9 @@ python experiments/step1_baseline/visualize.py --metrics-json reports/metrics/ba
 입력 이미지 조합을 클래스별로 확인하려면 다음 명령을 사용합니다.
 
 ```bash
-python experiments/step1_baseline/visualize_cases.py --cases-jsonl data/balanced3/inference_cases/inference_groups_top20_seed42_A_cases.jsonl data/balanced3/inference_cases/inference_groups_top20_seed42_B_cases.jsonl --limit 2
+python -m experiments.step1_baseline.visualize_cases --cases-jsonl data/balanced3/inference_cases/inference_groups_top20_seed42_A_cases.jsonl data/balanced3/inference_cases/inference_groups_top20_seed42_B_cases.jsonl --limit 2
 ```
 
 이미지 조합 그림은 기본적으로 `reports/class_plots/`에 저장됩니다.
 기존 `--category`, `--num-classes`, `--seed` 등의 그룹 생성 옵션은 `scripts/build_groups.py`에서 사용합니다.
-`scripts/build_pools.py --mode A` 또는 `--mode B`로 후보·그룹·해당 케이스를 한 번에 생성할 수도 있습니다.
+`python -m scripts.build_pools --mode A` 또는 `--mode B`로 후보·그룹·해당 케이스를 한 번에 생성할 수도 있습니다.

@@ -1,5 +1,3 @@
-"""Reusable plots for the A/B metric report."""
-
 import matplotlib
 
 matplotlib.use("Agg")
@@ -102,7 +100,6 @@ def plot_margins(report, output_dir):
             if row[key]:
                 samples.append(row[key])
                 labels.append(f"{key} (n={len(row[key])})")
-        # A single hist call shares the bin edges across both groups.
         axis.hist(samples, bins=25, histtype="step", linewidth=1.6, label=labels)
         axis.axvline(0, color="gray", linestyle="--", linewidth=1)
         axis.set(title=f"Mode {row['mode']}: first-token margins",

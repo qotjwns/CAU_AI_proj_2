@@ -1,5 +1,3 @@
-"""Group and render the existing image cases by category and pair."""
-
 import matplotlib.pyplot as plt
 
 from src.common.data import normalize_category

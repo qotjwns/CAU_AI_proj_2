@@ -1,6 +1,7 @@
-"""Construct the existing image/text message and parse strict Yes/No responses."""
-
 from src.common.paths import project_path
+
+
+LABELS = ("Yes", "No")
 
 
 def build_messages(case):

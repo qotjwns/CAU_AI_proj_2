@@ -1,9 +1,5 @@
 import argparse
 from pathlib import Path
-import sys
-
-if __package__ in (None, ""):
-    sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from src.common.data import normalize_category, read_jsonl
 from src.common.paths import PROJECT_ROOT

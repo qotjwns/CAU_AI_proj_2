@@ -1,9 +1,9 @@
-# python scripts/download_data.py
-
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from urllib.request import urlretrieve
 from zipfile import ZipFile
+
+from src.common.paths import PROJECT_ROOT
 
 
 DATASETS = {
@@ -24,7 +24,6 @@ DATASETS = {
     },
 }
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DATA_DIR = PROJECT_ROOT / "data" / "raw"
 CACHE_DIR = PROJECT_ROOT / "cache" / "downloads"
 

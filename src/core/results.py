@@ -1,13 +1,9 @@
-"""Build prediction records and read/write experiment result artifacts."""
-
 import csv
 from pathlib import Path
 
-from tqdm import tqdm
-
 from src.common.data import read_jsonl, write_json
 from src.common.paths import project_relative_path
-from src.core.metrics import LABELS
+from src.core.prompts import LABELS
 
 
 def build_result(case, inference, config):
@@ -17,7 +13,7 @@ def build_result(case, inference, config):
         "group_id": case["group_id"],
         "pair_id": case["pair_id"],
         "mode": case["mode"],
-        "inference_method": config["inference_method"],
+        "inference_method": "baseline",
         "model_name": config["model_name"],
         "object": case["class"],
         "composition": "".join(case["image_labels"]),
@@ -34,9 +30,8 @@ def build_result(case, inference, config):
 def load_results(paths):
     records = []
     seen = set()
-    for path in tqdm(paths, desc="Read results", unit="file"):
+    for path in paths:
         for record in read_jsonl(path):
-            # A and B can intentionally share a case_id.
             key = (record["mode"], record["case_id"])
             if key in seen:
                 raise ValueError(f"Duplicate result: {key}")

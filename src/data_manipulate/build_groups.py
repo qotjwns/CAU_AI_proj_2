@@ -1,5 +1,3 @@
-"""Sample class images and construct the five existing comparison groups."""
-
 import hashlib
 from pathlib import Path
 import random
