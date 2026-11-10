@@ -1,10 +1,8 @@
 from src.core.prompts import build_messages, parse_prediction
 
 
-def infer_case(case, model, processor, answer_token_ids):
-    import torch
-
-    inputs = processor.apply_chat_template(
+def prepare_inputs(case, model, processor):
+    return processor.apply_chat_template(
         build_messages(case),
         tokenize=True,
         add_generation_prompt=True,
@@ -12,16 +10,23 @@ def infer_case(case, model, processor, answer_token_ids):
         return_tensors="pt",
     ).to(model.device)
 
+
+def generate_response(inputs, model, output_hidden_states=False):
+    import torch
+
     with torch.inference_mode():
-        generated = model.generate(
+        return model.generate(
             **inputs,
             do_sample=False,
             num_beams=1,
             max_new_tokens=8,
             return_dict_in_generate=True,
             output_logits=True,
+            output_hidden_states=output_hidden_states,
         )
 
+
+def summarize_response(inputs, generated, model, processor, answer_token_ids):
     input_length = inputs["input_ids"].shape[1]
     raw_response = processor.tokenizer.decode(
         generated.sequences[0, input_length:],
@@ -43,3 +48,9 @@ def infer_case(case, model, processor, answer_token_ids):
         "input_token_count": inputs["attention_mask"].sum().item(),
         "image_token_count": image_tokens.sum().item(),
     }
+
+
+def infer_case(case, model, processor, answer_token_ids):
+    inputs = prepare_inputs(case, model, processor)
+    generated = generate_response(inputs, model)
+    return summarize_response(inputs, generated, model, processor, answer_token_ids)

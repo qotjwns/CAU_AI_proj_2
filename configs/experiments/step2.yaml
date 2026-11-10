@@ -1,0 +1,13 @@
+model_config: configs/models/qwen2_5_vl_3b.yaml
+
+cases_jsonl:
+  - data/balanced3/inference_cases/inference_groups_top20_seed42_A_cases.jsonl
+  - data/balanced3/inference_cases/inference_groups_top20_seed42_B_cases.jsonl
+
+output_dir: results/step2/qwen2_5_vl_3b
+layers: [9, 18, 27, 36]
+expected_hidden_size: 2048
+pooling_dtype: float32
+verification:
+  atol: 0.00001
+  rtol: 0.00001
