@@ -11,7 +11,7 @@ def main():
     parser.add_argument("--cases-jsonl", type=Path, nargs="+", required=True)
     parser.add_argument("--category", help="지정하지 않으면 모든 클래스")
     parser.add_argument("--limit", type=int, default=0, help="클래스별 pair 수 (기본 0: 전체)")
-    parser.add_argument("--output-dir", type=Path, default=PROJECT_ROOT / "reports" / "class_plots")
+    parser.add_argument("--output-dir", type=Path, default=PROJECT_ROOT / "reports" / "step1" / "cases")
     args = parser.parse_args()
     output_dir = args.output_dir.expanduser().resolve()
 

@@ -92,24 +92,41 @@ python -m experiments.step1_baseline.run --limit 10
 
 `--limit`은 설정 파일에 나열된 입력을 순서대로 읽어 전체에서 최대 해당 개수만 처리합니다.
 기본 설정은 A 파일이 먼저이므로 위 명령은 A의 앞 10개 케이스를 처리합니다.
-결과는 `reports/inference/baseline/qwen2_5_vl_3b/pilot_10/`에 저장합니다.
+결과는 `results/step1/pilot_10/`에 A/B별 JSONL로 저장합니다.
 케이스 단위로 자르므로 마지막 비교 쌍은 일부만 포함될 수 있습니다.
 
 저장 위치를 직접 지정하거나 파일럿을 다시 실행할 때는 새 폴더를 지정합니다.
 기존 결과 파일은 덮어쓰지 않습니다.
 
 ```bash
-python -m experiments.step1_baseline.run --limit 10 --output-dir reports/inference/pilot_10_run2
+python -m experiments.step1_baseline.run --limit 10 --output-dir results/step1/pilot_10_run2
 ```
 
 결과를 집계하고 그래프로 저장합니다. 추론 결과가 이미 있으면 이 단계부터 실행하면 됩니다.
 
 ```bash
-python -m experiments.step1_baseline.analyze --results-jsonl reports/inference/baseline/qwen2_5_vl_3b/inference_groups_top20_seed42_A_results.jsonl reports/inference/baseline/qwen2_5_vl_3b/inference_groups_top20_seed42_B_results.jsonl --output-dir reports/metrics/baseline/qwen2_5_vl_3b
-python -m experiments.step1_baseline.visualize --metrics-json reports/metrics/baseline/qwen2_5_vl_3b/metrics.json
+python -m experiments.step1_baseline.analyze --results-jsonl results/step1/inference_groups_top20_seed42_A_results.jsonl results/step1/inference_groups_top20_seed42_B_results.jsonl
+python -m experiments.step1_baseline.visualize --metrics-json results/step1/metrics/metrics.json
 ```
 
-추론 결과는 `reports/inference/`, 메트릭과 그래프는 `reports/metrics/` 아래에 저장됩니다.
+실험 결과 JSONL·JSON·CSV는 `results/`, PNG·JPG 등 그림은 `reports/`에 저장합니다.
+STEP 1 추론 결과는 A/B 파일을 유지하며 `results/step1/`에 저장합니다.
+메트릭은 기본적으로 입력 결과 폴더 아래 `metrics/`에 저장합니다.
+그래프는 `results/` 아래 메트릭 경로에 대응하는 `reports/` 경로의 `plots/`에 저장합니다.
+예를 들어 `results/step1/pilot_10/metrics/metrics.json`의 그래프는 `reports/step1/pilot_10/metrics/plots/`에 저장됩니다.
+`results/` 밖의 메트릭 파일을 시각화할 때는 `--output-dir`로 그림 저장 폴더를 지정합니다.
+
+```text
+results/
+└── step1/
+    ├── inference_groups_top20_seed42_A_results.jsonl
+    ├── inference_groups_top20_seed42_B_results.jsonl
+    └── metrics/            # metrics.json, 지표별 CSV
+reports/
+└── step1/
+    ├── metrics/plots/     # 메트릭 그래프
+    └── cases/             # 입력 이미지 조합 그림
+```
 
 입력 이미지 조합을 클래스별로 확인하려면 다음 명령을 사용합니다.
 
@@ -117,6 +134,6 @@ python -m experiments.step1_baseline.visualize --metrics-json reports/metrics/ba
 python -m experiments.step1_baseline.visualize_cases --cases-jsonl data/balanced3/inference_cases/inference_groups_top20_seed42_A_cases.jsonl data/balanced3/inference_cases/inference_groups_top20_seed42_B_cases.jsonl --limit 2
 ```
 
-이미지 조합 그림은 기본적으로 `reports/class_plots/`에 저장됩니다.
+이미지 조합 그림은 기본적으로 `reports/step1/cases/`에 저장됩니다.
 기존 `--category`, `--num-classes`, `--seed` 등의 그룹 생성 옵션은 `scripts/build_groups.py`에서 사용합니다.
 `python -m scripts.build_pools --mode A` 또는 `--mode B`로 후보·그룹·해당 케이스를 한 번에 생성할 수도 있습니다.

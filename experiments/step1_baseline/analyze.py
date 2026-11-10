@@ -9,13 +9,13 @@ from src.core.results import load_results, save_metrics
 def main():
     parser = argparse.ArgumentParser(description="추론 결과 JSONL에서 A/B 메트릭 계산")
     parser.add_argument("--results-jsonl", type=Path, nargs="+", required=True)
-    parser.add_argument("--output-dir", type=Path, required=True)
+    parser.add_argument("--output-dir", type=Path, help="기본: 결과 JSONL 폴더 아래 metrics/")
     args = parser.parse_args()
     paths = [project_path(path) for path in args.results_jsonl]
     records = load_results(paths)
     report = compute_metrics(records)
     report["source_files"] = [project_relative_path(path) for path in paths]
-    output_dir = project_path(args.output_dir)
+    output_dir = project_path(args.output_dir) if args.output_dir else paths[0].parent / "metrics"
     save_metrics(report, output_dir)
     for row in report["by_mode"]:
         print(f"Mode {row['mode']}: {row['correct']}/{row['total']} "
