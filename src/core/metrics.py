@@ -1,20 +1,8 @@
-# python src/evaluation/compute_metrics.py --results-jsonl reports/inference/baseline/qwen2_5_vl_3b/inference_groups_top20_seed42_A_results.jsonl reports/inference/baseline/qwen2_5_vl_3b/inference_groups_top20_seed42_B_results.jsonl --output-dir reports/metrics/baseline/qwen2_5_vl_3b
+"""Compute A/B metrics from normalized prediction records."""
 
-import argparse
 from collections import Counter, defaultdict
-import csv
 from itertools import combinations, pairwise
-import json
-from pathlib import Path
 from statistics import fmean
-import sys
-
-if __package__ in (None, ""):
-    sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-
-from tqdm import tqdm
-
-from src.common.paths import project_path, project_relative_path
 
 
 LABELS = ("Yes", "No")
@@ -23,32 +11,6 @@ COMPOSITIONS = {"A": ("PPP", "PPN", "PNN", "NNN"), "B": ("NPP", "PNP", "PPN")}
 
 def ratio(numerator, denominator):
     return numerator / denominator if denominator else None
-
-
-def load_results(paths):
-    records = []
-    seen = set()
-    for path in tqdm(paths, desc="Read results", unit="file"):
-        with path.open(encoding="utf-8") as source:
-            for line in source:
-                if not line.strip():
-                    continue
-                record = json.loads(line)
-                # A and B can intentionally share a case_id.
-                key = (record["mode"], record["case_id"])
-                if key in seen:
-                    raise ValueError(f"Duplicate result: {key}")
-                seen.add(key)
-                if record["prediction"] not in LABELS:
-                    record["prediction"] = None
-                record["correct"] = record["prediction"] in LABELS and record["prediction"] == record["gt"]
-                record["composition"] = record["composition"].replace("+", "")
-                records.append(record)
-
-    runs = {(row["inference_method"], row["model_name"]) for row in records}
-    if len(runs) != 1:
-        raise ValueError("Provide non-empty results from one inference method and one model.")
-    return records
 
 
 def summarize(records):
@@ -197,46 +159,3 @@ def compute_metrics(records):
             for (mode,), rows in group_records(records, ("mode",))
         ],
     }
-
-
-def save_metrics(report, output_dir):
-    output_dir.mkdir(parents=True, exist_ok=True)
-    with (output_dir / "metrics.json").open("w", encoding="utf-8") as destination:
-        json.dump(report, destination, ensure_ascii=False, indent=2, allow_nan=False)
-        destination.write("\n")
-
-    tables = {"overall": [report["overall"]]}
-    for name in ("by_mode", "by_class", "by_composition", "by_negative_position",
-                 "pair_summary", "pair_transitions", "pair_details"):
-        tables[name] = report[name]
-    for name, rows in tables.items():
-        output_path = output_dir / f"{name}.csv"
-        if not rows:
-            output_path.unlink(missing_ok=True)
-            continue
-        columns = [key for key in rows[0] if key != "confusion_matrix"]
-        with output_path.open("w", encoding="utf-8-sig", newline="") as destination:
-            writer = csv.DictWriter(destination, fieldnames=columns, extrasaction="ignore")
-            writer.writeheader()
-            writer.writerows(rows)
-
-
-def main():
-    parser = argparse.ArgumentParser(description="추론 결과 JSONL에서 A/B 메트릭 계산")
-    parser.add_argument("--results-jsonl", type=Path, nargs="+", required=True)
-    parser.add_argument("--output-dir", type=Path, required=True)
-    args = parser.parse_args()
-    paths = [project_path(path) for path in args.results_jsonl]
-    records = load_results(paths)
-    report = compute_metrics(records)
-    report["source_files"] = [project_relative_path(path) for path in paths]
-    output_dir = project_path(args.output_dir)
-    save_metrics(report, output_dir)
-    for row in report["by_mode"]:
-        print(f"Mode {row['mode']}: {row['correct']}/{row['total']} "
-              f"({row['accuracy']:.2%}), invalid={row['invalid_count']}")
-    print(f"저장: {output_dir}")
-
-
-if __name__ == "__main__":
-    main()

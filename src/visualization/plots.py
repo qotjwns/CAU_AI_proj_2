@@ -1,20 +1,11 @@
-# python src/visualize/plot_metrics.py --metrics-json reports/metrics/baseline/qwen2_5_vl_3b/metrics.json
-
-import argparse
-import json
-from pathlib import Path
-import sys
-
-if __package__ in (None, ""):
-    sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+"""Reusable plots for the A/B metric report."""
 
 import matplotlib
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
-from src.common.paths import project_path
-from src.evaluation.compute_metrics import COMPOSITIONS
+from src.core.metrics import COMPOSITIONS
 
 
 def save_figure(fig, output_dir, name):
@@ -143,20 +134,7 @@ def plot_pairs(report, output_dir):
     save_figure(fig, output_dir, "pair_changes.png")
 
 
-def main():
-    parser = argparse.ArgumentParser(description="계산된 메트릭 JSON을 PNG 차트로 시각화")
-    parser.add_argument("--metrics-json", type=Path, required=True)
-    parser.add_argument("--output-dir", type=Path)
-    args = parser.parse_args()
-    source = project_path(args.metrics_json)
-    with source.open(encoding="utf-8") as input_file:
-        report = json.load(input_file)
-    output_dir = project_path(args.output_dir) if args.output_dir else source.parent / "plots"
+def plot_report(report, output_dir):
     output_dir.mkdir(parents=True, exist_ok=True)
     for plot in (plot_accuracy, plot_confusion, plot_negative_positions, plot_margins, plot_pairs):
         plot(report, output_dir)
-    print(f"저장: {output_dir}")
-
-
-if __name__ == "__main__":
-    main()

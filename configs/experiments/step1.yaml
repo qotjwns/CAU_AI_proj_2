@@ -1,3 +1,4 @@
+# Step 1: paired A/B baseline inference.
 inference_method: baseline
 
 model_config: configs/models/qwen2_5_vl_3b.yaml

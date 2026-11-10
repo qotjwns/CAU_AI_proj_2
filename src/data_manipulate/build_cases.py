@@ -1,17 +1,10 @@
-# python src/data_manipulate/build_cases.py --groups-json data/balanced3/inference_pools/inference_groups_top20_seed42.json --mode A
-# python src/data_manipulate/build_cases.py --groups-json data/balanced3/inference_pools/inference_groups_top20_seed42.json --mode B
+"""Construct and save the A/B cases from sampled image groups."""
 
-import argparse
 from collections import Counter
 import hashlib
 from itertools import combinations
 import json
-from pathlib import Path
 import random
-import sys
-
-if __package__ in (None, ""):
-    sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from src.common.data import read_json
 from src.common.paths import project_path, project_relative_path
@@ -87,16 +80,3 @@ def save_cases(groups_json, mode, output=None):
     counts = Counter(case["gt"] for case in cases)
     print(f"Mode {mode}: 전체 {len(cases)}개 | Yes {counts['Yes']} / No {counts['No']}")
     print(f"저장: {output_path}")
-
-
-def main():
-    parser = argparse.ArgumentParser(description="A: 한 장 교체 비교, B: 같은 이미지의 위치 비교")
-    parser.add_argument("--groups-json", type=Path, required=True)
-    parser.add_argument("--mode", choices=("A", "B"), required=True)
-    parser.add_argument("--output", type=Path)
-    args = parser.parse_args()
-    save_cases(args.groups_json, args.mode, args.output)
-
-
-if __name__ == "__main__":
-    main()

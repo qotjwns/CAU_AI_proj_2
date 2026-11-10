@@ -1,17 +1,11 @@
-# python src/data_manipulate/make_inference_pool.py --config configs/data/balanced3.yaml
+"""Sample class images and construct the five existing comparison groups."""
 
-import argparse
 import hashlib
 from pathlib import Path
 import random
-import sys
-
-if __package__ in (None, ""):
-    sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from src.common.data import normalize_category, read_json, write_json
-from src.common.config import load_config
-from src.common.paths import DEFAULT_CONFIG, project_relative_path
+from src.common.paths import project_relative_path
 
 
 IMAGES_PER_LABEL = 8
@@ -106,36 +100,3 @@ def generate_groups(config, pool_dir=None, output_dir=None):
     print(f"전체: {len(category_dirs)}클래스, {len(groups)}그룹")
     print(f"저장: {output_path}")
     return output_path
-
-
-def main():
-    parser = argparse.ArgumentParser(
-        description="클래스별 양성 8장·음성 후보 8장에서 양성 4장·음성 8장의 그룹 5개 생성"
-    )
-    parser.add_argument("--config", type=Path, default=DEFAULT_CONFIG)
-    selection = parser.add_mutually_exclusive_group()
-    selection.add_argument(
-        "--category", dest="categories", nargs="+",
-        help="클래스 이름 또는 폴더명 목록. 지정하면 이 클래스들만 사용합니다.",
-    )
-    selection.add_argument(
-        "--num-classes", type=int,
-        help="자동 선택할 클래스 수 (기본: YAML 설정)",
-    )
-    parser.add_argument("--seed", type=int, help="샘플링 시드 (기본: YAML 설정)")
-    parser.add_argument("--pool-dir", type=Path)
-    parser.add_argument("--output-dir", type=Path)
-    args = parser.parse_args()
-    config = load_config(args.config)
-    if args.seed is not None:
-        config["seed"] = args.seed
-    if args.num_classes is not None:
-        config["num_classes"] = args.num_classes
-        config["categories"] = []
-    if args.categories is not None:
-        config["categories"] = args.categories
-    generate_groups(config, args.pool_dir, args.output_dir)
-
-
-if __name__ == "__main__":
-    main()

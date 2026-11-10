@@ -6,10 +6,21 @@ def read_json(path):
         return json.load(source)
 
 
-def write_json(data, output_path):
+def iter_jsonl(source):
+    for line in source:
+        if line.strip():
+            yield json.loads(line)
+
+
+def read_jsonl(path):
+    with path.open(encoding="utf-8") as source:
+        yield from iter_jsonl(source)
+
+
+def write_json(data, output_path, *, allow_nan=True):
     output_path.parent.mkdir(parents=True, exist_ok=True)
     with output_path.open("w", encoding="utf-8") as output:
-        json.dump(data, output, ensure_ascii=False, indent=2)
+        json.dump(data, output, ensure_ascii=False, indent=2, allow_nan=allow_nan)
         output.write("\n")
 
 
