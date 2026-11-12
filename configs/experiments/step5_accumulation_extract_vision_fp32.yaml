@@ -1,0 +1,15 @@
+# STEP 5-2 민감도 분석: 비전 인코더만 float32 (언어 모델 bf16 유지). 본 실행 후 부분집합에만 실행.
+model_config: configs/models/qwen2_5_vl_3b.yaml
+cases_jsonl:
+  - data/step5_accumulation/step5_seed52_vision_fp32_subset.jsonl
+output_dir: results/step5/qwen2_5_vl_3b/accumulation/extraction_vision_fp32
+layers: [9, 18, 27, 36]
+expected_hidden_size: 2048
+pooling_dtype: float32
+expected_images: null
+answer_variants: true
+fp32_margin: true
+vision_dtype: float32
+verification:
+  atol: 0.00001
+  rtol: 0.00001

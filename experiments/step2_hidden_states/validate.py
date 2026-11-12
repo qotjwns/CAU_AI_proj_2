@@ -3,10 +3,12 @@ from pathlib import Path
 
 from src.common.data import write_csv, write_json
 from src.common.paths import PROJECT_ROOT, project_path
+from src.common.threads import configure_cpu_threads
 from src.core.feature_validation import validate_run
 
 
 def main():
+    configure_cpu_threads()
     parser = argparse.ArgumentParser(description="저장된 STEP 2 특징 검증 및 STEP 1 추론 결과 비교 (CPU)")
     parser.add_argument("--run-dir", type=Path, required=True)
     parser.add_argument("--step1-results", type=Path, nargs="+")

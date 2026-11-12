@@ -84,7 +84,7 @@ def freeze_probes(config_path, config, step3_config_path, step3_config, reason=N
     run_dir = project_path(training["run_dir"]).resolve()
     verification = step3_config["verification"]
     metadata, records, features, slots, queries = load_slots(
-        run_dir, verification["atol"], verification["rtol"], with_query=True)
+        run_dir, verification["atol"], verification["rtol"], with_query=True, progress=True)
     signature = extraction_signature(metadata)
     layers = signature["layers"]
     threshold = step3_config["threshold"]
@@ -95,12 +95,12 @@ def freeze_probes(config_path, config, step3_config_path, step3_config, reason=N
     training_images = sorted({vector["image_id"] for vector in vectors})
     step4_images = {image_id for case in read_jsonl(project_path(config["evaluation_cases"])) for image_id in case["image_ids"]}
     require(not step4_images & set(training_images), "Evaluation cases share images with the probe training data")
-    zi_probes, zi_rows = fit_final(vectors, matrix, layers, settings, threshold)
+    zi_probes, zi_rows = fit_final(vectors, matrix, layers, settings, threshold, progress=True)
     unique, _ = unique_cases(case_table(records, slots))
     hq_queries = queries[[case["record"] for case in unique]]
     del queries
     scopes = [config["preregistration"]["h_q"]["primary_scope"], *config["preregistration"]["h_q"]["secondary_scopes"]]
-    hq_readouts, hq_rows = fit_final_hq(unique, hq_queries, layers, settings, threshold, scopes)
+    hq_readouts, hq_rows = fit_final_hq(unique, hq_queries, layers, settings, threshold, scopes, progress=True)
 
     created = datetime.now(timezone.utc).isoformat(timespec="seconds")
     common = {

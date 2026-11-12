@@ -3,6 +3,7 @@ from pathlib import Path
 
 from src.common.config import read_yaml
 from src.common.paths import PROJECT_ROOT, project_path
+from src.common.threads import configure_cpu_threads
 from src.core.probe_freeze import freeze_probes
 
 
@@ -10,6 +11,7 @@ DEFAULT_CONFIG = PROJECT_ROOT / "configs" / "experiments" / "step4.yaml"
 
 
 def main():
+    configure_cpu_threads()
     parser = argparse.ArgumentParser(description="STEP 4 GPU 추출 전에 z_i Probe와 h_q readout을 학습·고정 (CPU)")
     parser.add_argument("--config", type=Path, default=DEFAULT_CONFIG)
     parser.add_argument("--reason", help="이전 고정 버전이 있을 때 새 버전을 만드는 이유 (필수)")

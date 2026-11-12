@@ -4,6 +4,7 @@ from pathlib import Path
 from src.common.config import read_yaml
 from src.common.data import write_json
 from src.common.paths import PROJECT_ROOT, project_path
+from src.common.threads import configure_cpu_threads
 from src.core.pilot_check import check_pilot
 
 
@@ -11,6 +12,7 @@ DEFAULT_CONFIG = PROJECT_ROOT / "configs" / "experiments" / "step4.yaml"
 
 
 def main():
+    configure_cpu_threads()
     parser = argparse.ArgumentParser(description="STEP 4 GPU 파일럿 무결성 검사 (평가 지표는 계산하지 않음, CPU)")
     parser.add_argument("--config", type=Path, default=DEFAULT_CONFIG)
     parser.add_argument("--run-dir", type=Path, default=Path("results/step4/qwen2_5_vl_3b/pilot"))

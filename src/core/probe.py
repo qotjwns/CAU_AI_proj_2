@@ -1,5 +1,6 @@
 import torch
 import torch.nn.functional as F
+from tqdm import tqdm
 
 from src.core.feature_validation import require
 
@@ -141,10 +142,12 @@ def cross_fit(vectors, matrix, layers, image_fold, folds, settings, threshold):
     return oof, probes, checkpoints
 
 
-def fit_final(vectors, matrix, layers, settings, threshold):
+def fit_final(vectors, matrix, layers, settings, threshold, progress=False):
     """클래스 × 레이어별로 모든 문맥 벡터를 써서 최종 Probe를 학습한다 (독립 검증용 고정 Probe)."""
     probes, rows = [], []
-    for name in sorted({vector["class"] for vector in vectors}):
+    classes = sorted({vector["class"] for vector in vectors})
+    bar = tqdm(total=len(classes) * len(layers), desc="Fit z_i probes", unit="probe", disable=not progress)
+    for name in classes:
         members = [vector["vector"] for vector in vectors if vector["class"] == name]
         labels = torch.tensor([vectors[index]["label"] == "P" for index in members])
         images = sorted({vectors[index]["image_id"] for index in members})
@@ -157,4 +160,6 @@ def fit_final(vectors, matrix, layers, settings, threshold):
                          "n_train_P": train["n_P"], "n_train_N": train["n_N"], "n_train_images": len(images),
                          "train_accuracy": train["accuracy"], "iterations": model["iterations"],
                          "grad_max": model["grad_max"], "converged": model["converged"], "loss": model["loss"]})
+            bar.update()
+    bar.close()
     return probes, rows

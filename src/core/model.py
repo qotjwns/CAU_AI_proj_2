@@ -1,7 +1,8 @@
 from src.common.paths import PROJECT_ROOT
 
 
-def load_model(model_name):
+def load_model(model_name, vision_dtype=None):
+    """vision_dtype='float32'이면 비전 인코더만 float32로 둔다 (STEP 5-2 민감도 분석). 기본값은 STEP 1~4와 같다."""
     import torch
     from transformers import AutoProcessor, Qwen2_5_VLForConditionalGeneration
 
@@ -17,4 +18,8 @@ def load_model(model_name):
     model = Qwen2_5_VLForConditionalGeneration.from_pretrained(
         model_dir, dtype=dtype, local_files_only=True,
     ).to(device).eval()
+    if vision_dtype is not None:
+        if vision_dtype != "float32":
+            raise ValueError("vision_dtype must be None or 'float32'")
+        model.model.visual.to(torch.float32)
     return model, processor, (yes_id, no_id)

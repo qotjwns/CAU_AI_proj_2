@@ -7,6 +7,7 @@ import csv
 from collections import defaultdict
 
 import torch
+from tqdm import tqdm
 
 from src.common.data import read_json
 from src.core.feature_analysis import extraction_signature
@@ -172,11 +173,14 @@ def run_hq_probe(run_dir, step3_dir, config):
     return report, cases, predictions, probe_rows
 
 
-def fit_final_hq(cases, features, layers, settings, threshold, scopes):
+def fit_final_hq(cases, features, layers, settings, threshold, scopes, progress=False):
     """STEP 4용 h_q readout: (범위, 클래스, 레이어, 위치)별로 모든 고유 입력을 써서 학습한다."""
     readouts, rows = [], []
+    classes = sorted({case["class"] for case in cases})
+    total = sum(len(classes) if scope == "per_class" else 1 for scope in scopes) * 3 * len(layers)
+    bar = tqdm(total=total, desc="Fit h_q readouts", unit="readout", disable=not progress)
     for scope in scopes:
-        groups = sorted({case["class"] for case in cases}) if scope == "per_class" else ["all"]
+        groups = classes if scope == "per_class" else ["all"]
         for group in groups:
             members = [i for i, case in enumerate(cases) if group == "all" or case["class"] == group]
             for position in range(3):
@@ -191,6 +195,8 @@ def fit_final_hq(cases, features, layers, settings, threshold, scopes):
                                  "n_train": len(members), "n_train_P": train["n_P"], "train_accuracy": train["accuracy"],
                                  "iterations": model["iterations"], "grad_max": model["grad_max"],
                                  "converged": model["converged"]})
+                    bar.update()
+    bar.close()
     return readouts, rows
 
 

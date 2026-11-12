@@ -1,0 +1,17 @@
+# STEP 5-2 VLM 응답과 Hidden State 추출 (STEP 4와 같은 모델·정밀도·해상도 설정, GPU 필요)
+# 실행: python -m experiments.step2_hidden_states.run --config configs/experiments/step5_accumulation_extract.yaml
+model_config: configs/models/qwen2_5_vl_3b.yaml
+
+cases_jsonl:
+  - data/step5_accumulation/step5_seed52_cases.jsonl
+
+output_dir: results/step5/qwen2_5_vl_3b/accumulation/extraction
+layers: [9, 18, 27, 36]
+expected_hidden_size: 2048
+pooling_dtype: float32
+expected_images: null      # 2~5장 (STEP 2~4는 기본값 3)
+answer_variants: true      # logsumexp({Yes, yes, ...}) - logsumexp({No, no, ...}); 토큰 목록은 run.json에 기록
+fp32_margin: true          # 보조: 최종층 h_q × lm_head(float32). 생성·정밀도는 바뀌지 않음
+verification:
+  atol: 0.00001
+  rtol: 0.00001

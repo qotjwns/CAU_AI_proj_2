@@ -1,0 +1,37 @@
+# STEP 5-1 탐색 분석: N 1장 입력에서 Positive 증거(z_i)가 Negative 증거 외에 VLM Yes−No Margin을 추가로 설명하는가 (CPU)
+# STEP 4 출력만 읽는다 (Probe 재학습·재적용 없음). STEP 4는 H1 검증용으로 사전 지정된 데이터이므로 이 분석은 탐색적이다.
+step4_dir: results/step4/qwen2_5_vl_3b        # zi_hq_slots.csv(고정 z_i 확률), extraction/manifest.jsonl(logit margin)
+output_dir: results/step5_diagnostics/qwen2_5_vl_3b/evidence_margin
+status: exploratory
+note: >-
+  STEP 4 data were preregistered for H1 only. This analysis is exploratory; confirmatory tests of the
+  positive-evidence effect are deferred to STEP 5-2 (controlled inputs with the same N image).
+
+analysis:
+  outcome: "VLM first-token logit margin (Yes minus No)"
+  unit: "unique model input: records sharing (class, ordered image_ids) are counted once"
+  evidence: "logit of the frozen z_i probe probability; z_N = the negative image, z_P = mean (or min) over the two positives"
+  primary_sample: one_negative     # GT No with exactly one N (PPN, PNP, NPP)
+  secondary_samples: [all_positive]  # PPP (GT Yes): does positive evidence track the margin when no N is present?
+  primary_layer: 36
+  primary_model: neg_pos
+  primary_estimand: "coefficient of z_P_mean in neg_pos, and the R^2 gain of neg_pos over neg"
+  controls: [class fixed effects, N position]
+  logit_clip: 0.000001             # probabilities are clipped to [clip, 1 - clip] before the logit
+
+limitations:
+  - >-
+    In STEP 4 every N image appears with one fixed pair of P images (only the order changes), so a same-N contrast of
+    positive evidence is not identified; z_P varies only between inputs with different N images. The within-N share
+    of z_P variance is reported to document this.
+  - >-
+    z_i is a probe estimate with error. A residual association with z_P can partly reflect N evidence that z_N
+    measures imperfectly; the partial correlation of z_N and z_P and a flexible (cubic) z_N control are reported.
+  - "Associations only: a z_P coefficient does not show that the model uses positive evidence causally."
+
+statistics:
+  method: "95% percentile cluster bootstrap (same resampling rule as STEP 4)"
+  reps: 1000
+  seed: 42
+  resampling_unit: "distinct image_id in the STEP 4 evaluation set; a case's weight is the product of its three images' draw counts"
+  chunk: 100                       # bootstrap replicates solved per batch (memory)

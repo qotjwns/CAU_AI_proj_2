@@ -6,6 +6,7 @@ import torch
 from src.common.config import read_yaml
 from src.common.data import write_csv, write_json
 from src.common.paths import PROJECT_ROOT, project_path, project_relative_path
+from src.common.threads import configure_cpu_threads
 from src.core.probe_analysis import run_probe_study
 from src.core.probe_outputs import write_evaluation
 
@@ -15,6 +16,7 @@ DEFAULT_REFERENCE = PROJECT_ROOT / "configs" / "experiments" / "step3_reference.
 
 
 def main():
+    configure_cpu_threads()
     parser = argparse.ArgumentParser(description="STEP 2 Hidden State로 20개 클래스 Linear Probe 학습·OOF 평가 (CPU)")
     parser.add_argument("--config", type=Path, default=DEFAULT_CONFIG)
     parser.add_argument("--run-dir", type=Path, help="STEP 2 추출 폴더 (기본: 설정 파일의 run_dir)")

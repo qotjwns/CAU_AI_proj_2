@@ -1,0 +1,58 @@
+# STEP 5-1 보완 분석 (A1~A7, CPU). STEP 4 저장값(+ A7은 STEP 2·3 저장값)만 읽는다. 모델·Probe 재학습 없음.
+# 기준값은 모두 실행 전에 이 파일에 고정한다.
+step4_dir: results/step4/qwen2_5_vl_3b        # zi_hq_slots.csv(고정 z_i 확률), extraction/manifest.jsonl(margin·답)
+step3_dir: results/step3/qwen2_5_vl_3b        # vectors.csv(OOF, 보정 학습 전용), slots.csv(A7 OOF 점수)
+step2_run_dir: results/step2/qwen2_5_vl_3b    # manifest.jsonl(A7 margin·답)
+output_dir: results/step5_diagnostics/qwen2_5_vl_3b/evidence_followup
+status: exploratory
+note: >-
+  STEP 4 data were preregistered for H1 only, and the STEP 5-1 primary result was seen before these analyses
+  were specified. All results here are exploratory; confirmation is deferred to STEP 5-2.
+
+sample: "one-N inputs (PPN, PNP, NPP; GT No), unique model inputs"
+primary_layer: 36                    # 나머지 레이어는 A1·A2·A3에서 참고용으로만 보고
+logit_clip: 0.000001                 # 확률을 [clip, 1-clip]로 자른 뒤 logit
+standardization: "per class and layer: z_i logits of all N and P slots in the analysed sample pooled, population SD"
+sign_check: >-
+  consistent if margin > 0 with answer Yes, or margin < 0 with answer No. margin == 0 (bf16 tie) and unparsed
+  answers count as inconsistent. Every analysis is reported on all inputs and on sign-consistent inputs only.
+
+a2:
+  folds: 4
+  seed: 42
+  grouping: pair_id                  # STEP 4 pair끼리 이미지를 공유하지 않으므로 이미지 ID 기준 그룹 분할과 같다
+  stratify: class                    # 클래스마다 pair 8개 → fold마다 2개
+  logistic_c: 1.0                    # False-Yes 로지스틱: 0.5·||w||² + c·Σ BCE (기존 fit_logistic, 클래스 가중치 없음)
+  controls: [class fixed effects, N position fixed effects]   # 모든 집계 모형에 동일하게 포함
+  calibration: "class-wise Platt scaling (a·logit + b) fitted on STEP 3 OOF context vectors only; never on STEP 4"
+  soft_and_primary: calibrated       # Soft-AND는 보정 확률 사용, 원 확률 결과는 참고
+  ece_bins: 10
+a3:
+  prior_prediction: "The middle position (2) has the smallest coefficient. Stated before the result; not a decision rule."
+a4:
+  strata: [class, N position]
+  groups: "within each stratum, inputs ranked by mean P logit: bottom floor(n/3) vs top floor(n/3)"
+  pooling: "stratum-size weighted mean of per-stratum differences"
+a5:
+  probability: "frozen z_i probe probability of the N slot (in its actual context)"
+  thresholds: [0.1, 0.05, 0.2]       # 첫 값이 주 기준, 나머지는 민감도
+a6:
+  exclusion: "|residual of standardized mean P score on (class, N position, z_N)| > 3 SD"
+  exclusion_sd: 3.0
+  huber_k: 1.345                     # 척도: 전체 표본 OLS 잔차의 MAD×1.4826, 부트스트랩에서도 고정
+  huber_iterations: 50
+  spearman: "Pearson correlation of rank(margin) and rank(mean P score), both residualized on class, N position and rank(z_N)"
+a7:
+  source: "STEP 3 OOF probabilities (fold-specific probes) and STEP 2 margins; one-N unique inputs"
+  model: "margin ~ N-image fixed effects + N position + z_N + z_P mean (class-standardized)"
+
+limitations:
+  - "z_P is the mean of two P scores, so it carries less measurement noise than the single z_N; attenuation bias is smaller for z_P, which can favour beta_P over beta_N."
+  - "Soft-AND calibration is fitted on STEP 3 OOF predictions of fold-specific probes, not on the frozen probes themselves."
+  - "Associations only; none of these analyses manipulates the input."
+
+statistics:
+  method: "95% percentile cluster bootstrap over image IDs (STEP 4 rule: case weight = product of its images' draw counts)"
+  reps: 1000
+  seed: 42
+  chunk: 100

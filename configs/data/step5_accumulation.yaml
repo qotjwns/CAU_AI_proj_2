@@ -1,0 +1,32 @@
+# STEP 5-2 입력 수준 실험 케이스: 같은 N 이미지에 P를 누적 추가 (STEP 4 이미지만 사용, 새 이미지 없음)
+seed: 52
+source_config: configs/data/balanced3.yaml               # image_dir, 원 프롬프트(STEP 1~4)
+step4_cases: data/step4_independent/step4_seed2026_cases.jsonl
+step4_groups: data/step4_independent/step4_seed2026_groups.json
+step4_scores: results/step4/qwen2_5_vl_3b/vectors.csv    # 고정 z_i Probe 확률 (위치 1 = 선행 이미지 없음)
+used_image_sources:                                       # 최종 시험 이미지를 뽑을 때 제외할 이미지 (STEP 1~5)
+  - data/balanced3/inference_cases/inference_groups_top20_seed42_A_cases.jsonl
+  - data/balanced3/inference_cases/inference_groups_top20_seed42_B_cases.jsonl
+  - data/step4_independent/step4_seed2026_cases.jsonl
+
+# 원 프롬프트에서 이미지 수만 바꾼 템플릿. count=3이면 STEP 1~4 프롬프트와 같아야 한다 (생성 시 검사).
+prompt: "Is the object category '{object}' present in all {count} images? Please answer with Yes or No."
+
+selection:
+  score_layer: 36
+  score_position: 1                     # 위치 1 문맥 벡터 (선행 이미지 없음)
+  valid_P_min_probability: 0.5          # Probe가 P로 읽는 P만 사용 (사용자 결정 4)
+  strata: "within class, valid P sorted by probability: Low = bottom floor(n/3), High = top floor(n/3)"
+series_length: 5                        # P1..P5 (P1..P4는 one-N, P5는 All-P의 마지막 칸)
+p_counts: [1, 2, 3, 4]                  # one-N 입력의 P 장수 (전체 2~5장)
+placements: [N-first, N-last]
+strengths: [High, Low]
+negatives_per_class: null               # null = STEP 4 N 이미지 24장 전부
+output_dir: data/step5_accumulation
+
+# 민감도 분석(본 실행 후): 비전 인코더 float32로 일부 계열 재실행. 결과와 무관하게 seed로만 선택한다.
+vision_fp32_subset:
+  negatives_per_class: 6                # 클래스당 N 6장 = N 120장 (25%), 각 N의 High·Low 계열 전부
+  seed: 52
+  conditions: [one_negative]            # 주 결과(P4 - P1)와 추세에 필요한 one-N 입력 k = 1~4, 두 배치
+  output: data/step5_accumulation/step5_seed52_vision_fp32_subset.jsonl

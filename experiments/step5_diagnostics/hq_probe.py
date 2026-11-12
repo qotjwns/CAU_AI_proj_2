@@ -4,6 +4,7 @@ from pathlib import Path
 from src.common.config import read_yaml
 from src.common.data import write_csv, write_json
 from src.common.paths import PROJECT_ROOT, project_path, project_relative_path
+from src.common.threads import configure_cpu_threads
 from src.core.hq_probe import run_hq_probe
 from src.visualization.hq_probe import plot_hq_readability, plot_localization
 
@@ -12,6 +13,7 @@ DEFAULT_CONFIG = PROJECT_ROOT / "configs" / "experiments" / "step5_hq_probe.yaml
 
 
 def main():
+    configure_cpu_threads()
     parser = argparse.ArgumentParser(description="STEP 5 사전 진단: h_q Probe와 z_i Probe의 이미지별 P/N 판별 비교 (CPU)")
     parser.add_argument("--config", type=Path, default=DEFAULT_CONFIG)
     parser.add_argument("--output-dir", type=Path)

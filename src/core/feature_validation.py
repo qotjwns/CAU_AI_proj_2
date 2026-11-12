@@ -51,7 +51,8 @@ def inspect_run(run_dir):
     return metadata, records, checks, inventory
 
 
-def load_validated_feature(run_dir, record, metadata, atol=1e-5, rtol=1e-5):
+def load_validated_feature(run_dir, record, metadata, atol=1e-5, rtol=1e-5, expected_images=3):
+    """expected_images=None이면 이미지 수를 고정하지 않는다 (STEP 5-2). 기본값 3은 STEP 2~4와 같다."""
     payload = torch.load(feature_path(run_dir, record), map_location="cpu", weights_only=True)
     case = record["case"]
     config = metadata["config"]
@@ -64,9 +65,11 @@ def load_validated_feature(run_dir, record, metadata, atol=1e-5, rtol=1e-5):
             "Final layer differs from saved model configuration")
     require(config["pooling_dtype"] in ("float32", "model"), "Unsupported pooling dtype")
     require(payload["case"] == case, "Case metadata differs between manifest and .pt")
-    require(len(case["image_ids"]) == len(case["image_order"]) == len(case["image_labels"]) == 3,
-            "Expected three images, filenames and labels")
-    require(len(set(case["image_ids"])) == 3, "Repeated image IDs within one case")
+    count = len(case["image_ids"])
+    require(count >= 1 and count == len(case["image_order"]) == len(case["image_labels"]),
+            "Image IDs, filenames and labels differ in length")
+    require(expected_images is None or count == expected_images, f"Expected {expected_images} images, got {count}")
+    require(len(set(case["image_ids"])) == count, "Repeated image IDs within one case")
     require(all(label in ("P", "N") for label in case["image_labels"]), "Invalid image label")
     require(case["composition"].replace("+", "") == "".join(case["image_labels"]), "Composition mismatch")
     require(case["gt"] == ("Yes" if all(label == "P" for label in case["image_labels"]) else "No"),
@@ -80,7 +83,7 @@ def load_validated_feature(run_dir, record, metadata, atol=1e-5, rtol=1e-5):
             "Final normalization layer mismatch")
     require(all(1 <= layer <= metadata["final_layer_after_norm"] for layer in layers), "Invalid layer number")
 
-    for name, shape in (("image_features", (len(layers), 3, width)),
+    for name, shape in (("image_features", (len(layers), count, width)),
                         ("query_features", (len(layers), width))):
         tensor = payload[name]
         require(tuple(tensor.shape) == shape, f"{name}: expected shape {shape}, got {tuple(tensor.shape)}")
@@ -93,7 +96,7 @@ def load_validated_feature(run_dir, record, metadata, atol=1e-5, rtol=1e-5):
             "Invalid input IDs or attention mask shape")
     require(ids.dtype == torch.int64 and grids.dtype == torch.int64, "Input IDs and image grid must be int64")
     require(bool(((mask == 0) | (mask == 1)).all()), "Attention mask must contain only 0 and 1")
-    require(tuple(grids.shape) == (3, 3), "Expected image_grid_thw[3, 3]")
+    require(tuple(grids.shape) == (count, 3), f"Expected image_grid_thw[{count}, 3]")
     spans, query_index = map_image_tokens(
         payload, SimpleNamespace(**metadata["model_config"]), metadata["image_processor"]["merge_size"],
         case["image_ids"],
@@ -131,7 +134,7 @@ def load_validated_feature(run_dir, record, metadata, atol=1e-5, rtol=1e-5):
         dtype = {"torch.float16": torch.float16, "torch.bfloat16": torch.bfloat16,
                  "torch.float32": torch.float32}[metadata["dtype"]]
         for layer in layers:
-            require(len(states[layer]) == 3, f"Layer {layer}: expected three raw token tensors")
+            require(len(states[layer]) == count, f"Layer {layer}: expected {count} raw token tensors")
             images = []
             for span, tensor in zip(spans, states[layer]):
                 require(tuple(tensor.shape) == (span["token_count"], width), "Raw token tensor shape mismatch")

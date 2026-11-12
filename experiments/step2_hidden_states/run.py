@@ -12,6 +12,7 @@ from src.common.config import load_inference_config
 from src.common.data import normalize_category, read_jsonl, write_json
 from src.common.paths import PROJECT_ROOT, project_path, project_relative_path
 from src.core.features import compare_features, compare_tensors, extract_case_features
+from src.core.inference import answer_variant_ids
 from src.core.model import load_model
 
 
@@ -88,18 +89,29 @@ def run_extraction(
         "versions": {"torch": str(torch.__version__), "transformers": transformers.__version__},
     }
     write_json(metadata, destination / "run.json", allow_nan=False)
-    model, processor, answer_token_ids = load_model(config["model_name"])
+    model, processor, answer_token_ids = load_model(config["model_name"], config.get("vision_dtype"))
+    metadata["vision_dtype"] = str(model.model.visual.dtype)
     metadata.update(
         model_config=model.config.to_dict(),
         image_processor=processor.image_processor.to_dict(),
         chat_template=processor.chat_template,
-        device=str(model.device), dtype=str(model.dtype),
+        device=str(model.device), dtype=str(next(model.get_decoder().parameters()).dtype),
         attention_implementation=model.get_decoder().config._attn_implementation,
         final_layer_after_norm=len(model.get_decoder().layers),
     )
     write_json(metadata, destination / "run.json", allow_nan=False)
+    # STEP 5-2 옵션: 설정에 없으면 STEP 2~4와 같은 기본값(이미지 3장, 변형 margin·fp32 margin 없음)
+    answer_variants = answer_variant_ids(processor.tokenizer) if config.get("answer_variants", False) else None
+    if answer_variants is not None:
+        metadata["answer_variants"] = {
+            label: [{"id": token, "text": processor.tokenizer.decode([token])} for token in ids]
+            for label, ids in answer_variants.items()}
+        write_json(metadata, destination / "run.json", allow_nan=False)
     options = {
         "layers": config["layers"],
+        "expected_images": config.get("expected_images", 3),
+        "answer_variants": answer_variants,
+        "fp32_margin": config.get("fp32_margin", False),
         "expected_hidden_size": config["expected_hidden_size"],
         "pooling_dtype": config["pooling_dtype"],
         "save_token_states": save_token_states,
@@ -140,6 +152,8 @@ def run_extraction(
             write_json(metadata, destination / "run.json", allow_nan=False)
             del features
 
+    if torch.cuda.is_available():
+        metadata["peak_gpu_memory_bytes"] = torch.cuda.max_memory_allocated()
     metadata["verification_passed"] = verification_passed if verify_repeat or verify_reference else None
     metadata["status"] = "completed" if verification_passed else "verification_failed"
     write_json(metadata, destination / "run.json", allow_nan=False)

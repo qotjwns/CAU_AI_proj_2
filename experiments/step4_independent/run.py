@@ -4,6 +4,7 @@ from pathlib import Path
 from src.common.config import read_yaml
 from src.common.data import read_json, write_csv, write_json
 from src.common.paths import PROJECT_ROOT, project_path, project_relative_path
+from src.common.threads import configure_cpu_threads
 from src.core.probe_apply import apply_frozen_probe
 from src.core.probe_freeze import verify_frozen
 from src.core.probe_outputs import write_evaluation
@@ -35,6 +36,7 @@ def write_hq_outputs(report, result, output_dir):
 
 
 def main():
+    configure_cpu_threads()
     parser = argparse.ArgumentParser(description="STEP 4: 고정 z_i Probe·h_q readout을 독립 이미지에 적용해 검증 (CPU)")
     parser.add_argument("--config", type=Path, default=DEFAULT_CONFIG)
     parser.add_argument("--run-dir", type=Path, help="STEP 4 추출 폴더 (기본: 설정 파일의 run_dir)")

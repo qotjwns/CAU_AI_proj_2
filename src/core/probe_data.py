@@ -3,6 +3,7 @@ import random
 
 import torch
 import torch.nn.functional as F
+from tqdm import tqdm
 
 from src.core.feature_validation import inspect_run, load_validated_feature, require
 
@@ -12,7 +13,7 @@ def input_key(case):
     return case["prompt"], tuple(case["image_ids"])
 
 
-def load_slots(run_dir, atol=1e-5, rtol=1e-5, with_query=False):
+def load_slots(run_dir, atol=1e-5, rtol=1e-5, with_query=False, progress=False):
     """검증된 STEP 2 특징을 읽어 이미지 슬롯(케이스 × 위치) 단위로 펼친다.
 
     with_query=True이면 레코드별 h_q(query_features, [레이어, 차원])도 함께 반환한다.
@@ -21,7 +22,7 @@ def load_slots(run_dir, atol=1e-5, rtol=1e-5, with_query=False):
     failed = [name for name, passed in checks.items() if not passed]
     require(not failed, f"Invalid or incomplete extraction folder: {run_dir} ({', '.join(failed)}); run validate first")
     features, slots, queries = [], [], []
-    for index, record in enumerate(records):
+    for index, record in enumerate(tqdm(records, desc="Load features", unit="record", disable=not progress)):
         payload, _ = load_validated_feature(run_dir, record, metadata, atol, rtol)
         features.append(payload["image_features"].clone())
         if with_query:

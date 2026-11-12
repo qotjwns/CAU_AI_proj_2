@@ -4,6 +4,7 @@ from pathlib import Path
 from src.common.config import read_yaml
 from src.common.data import write_csv, write_json
 from src.common.paths import PROJECT_ROOT, project_path
+from src.common.threads import configure_cpu_threads
 from src.core.feature_analysis import analyze_runs
 
 
@@ -11,6 +12,7 @@ DEFAULT_REFERENCE = PROJECT_ROOT / "configs" / "experiments" / "step2_reference.
 
 
 def main():
+    configure_cpu_threads()
     parser = argparse.ArgumentParser(description="저장된 Hidden State의 동일 N1 거리 분석 및 과거 수치 참고 비교 (CPU)")
     parser.add_argument("--run-dir", type=Path, nargs="+", required=True)
     parser.add_argument("--category")

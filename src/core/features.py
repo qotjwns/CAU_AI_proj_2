@@ -93,8 +93,12 @@ def compare_features(left, right, atol=1e-5, rtol=1e-5):
 def extract_case_features(
     case, model, processor, answer_token_ids, layers=(9, 18, 27, 36),
     expected_hidden_size=2048, save_token_states=False, verify_reference=False,
-    pooling_dtype="float32", atol=1e-5, rtol=1e-5,
+    pooling_dtype="float32", atol=1e-5, rtol=1e-5, expected_images=3, answer_variants=None, fp32_margin=False,
 ):
+    """expected_images=None이면 이미지 수를 고정하지 않는다 (STEP 5-2: 2~5장).
+    answer_variants: 표기 변형 토큰 집합 margin. fp32_margin: 최종층 h_q × lm_head를 float32로 계산한 보조 margin.
+    기본값(3, None, False)에서는 STEP 1~4와 동작·출력이 같다.
+    """
     layers = list(layers)
     decoder = model.get_decoder()
     layer_count = len(decoder.layers)
@@ -105,8 +109,13 @@ def extract_case_features(
         raise ValueError(f"Hidden dimension is {hidden_size}, expected {expected_hidden_size}")
     if pooling_dtype not in ("float32", "model"):
         raise ValueError("pooling_dtype must be float32 or model")
-    if not (len(case["image_ids"]) == len(case["image_order"]) == len(case["image_labels"]) == 3):
-        raise ValueError("Each case must contain three image IDs, filenames and labels")
+    count = len(case["image_ids"])
+    if not (count == len(case["image_order"]) == len(case["image_labels"])) or count < 1:
+        raise ValueError("Image IDs, filenames and labels must have the same non-zero length")
+    if expected_images is not None and count != expected_images:
+        raise ValueError(f"Each case must contain {expected_images} image IDs, filenames and labels")
+    if fp32_margin and layer_count not in layers:
+        raise ValueError("fp32_margin needs the final layer (after norm) among the captured layers")
     model.eval()
     inputs = prepare_inputs(case, model, processor)
     merge_size = processor.image_processor.merge_size
@@ -174,5 +183,21 @@ def extract_case_features(
         }
         reference_check["passed"] = all(value["allclose"] for value in reference_check.values())
 
-    inference = summarize_response(inputs, generated, model, processor, answer_token_ids)
+    inference = summarize_response(inputs, generated, model, processor, answer_token_ids, answer_variants)
+    if fp32_margin:
+        head = model.get_output_embeddings()
+        if getattr(head, "bias", None) is not None:
+            raise ValueError("fp32_margin assumes an output head without bias")
+        query = features["query_features"][layers.index(layer_count)].double()
+        groups = {"Yes": [answer_token_ids[0]], "No": [answer_token_ids[1]], **{
+            f"variant_{key}": ids for key, ids in (answer_variants or {}).items()}}
+        rows = sorted({token for ids in groups.values() for token in ids})
+        values = head.weight.detach()[rows].double().cpu() @ query
+        logits = dict(zip(rows, values))
+        inference.update(fp32_yes_logit=logits[groups["Yes"][0]].item(), fp32_no_logit=logits[groups["No"][0]].item(),
+                         fp32_logit_margin=(logits[groups["Yes"][0]] - logits[groups["No"][0]]).item())
+        if answer_variants is not None:
+            yes, no = (torch.stack([logits[token] for token in groups[f"variant_{key}"]]).logsumexp(dim=0)
+                       for key in ("Yes", "No"))
+            inference.update(fp32_variant_logit_margin=(yes - no).item())
     return features, inference, reference_check
