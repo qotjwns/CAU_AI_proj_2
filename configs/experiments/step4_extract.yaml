@@ -1,0 +1,13 @@
+# STEP 4 독립 데이터의 VLM 응답과 Hidden State 추출 (STEP 2와 같은 설정, GPU 필요)
+model_config: configs/models/qwen2_5_vl_3b.yaml
+
+cases_jsonl:
+  - data/step4_independent/step4_seed2026_cases.jsonl
+
+output_dir: results/step4/qwen2_5_vl_3b/extraction
+layers: [9, 18, 27, 36]
+expected_hidden_size: 2048
+pooling_dtype: float32
+verification:
+  atol: 0.00001
+  rtol: 0.00001

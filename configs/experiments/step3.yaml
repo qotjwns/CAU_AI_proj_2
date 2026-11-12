@@ -1,0 +1,21 @@
+run_dir: results/step2/qwen2_5_vl_3b
+output_dir: results/step3/qwen2_5_vl_3b
+status: exploratory
+
+folds: 4
+seed: 42
+threshold: 0.5
+
+probe:
+  c: 1.0                  # 0.5·||w||² + c·Σ weighted BCE, 표준화된 특징 기준
+  class_weight: balanced
+  max_iter: 1000
+  tolerance_grad: 0.0000001
+
+duplicate_cosine_tolerance: 0.001
+bootstrap_reps: 1000          # 전역 image_id 클러스터 부트스트랩 반복 수
+permutation_runs: 100         # 라벨 순열 기준선: 매 회 Probe 320개 재학습 (회당 약 4초)
+examples_per_category: 5
+verification:
+  atol: 0.00001
+  rtol: 0.00001

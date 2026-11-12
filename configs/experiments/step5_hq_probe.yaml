@@ -1,0 +1,19 @@
+# STEP 5 사전 진단: h_q(마지막 입력 토큰)에서 이미지별 P/N 선형 판별 가능성 (CPU, 기존 STEP 2 벡터 사용)
+run_dir: results/step2/qwen2_5_vl_3b
+step3_dir: results/step3/qwen2_5_vl_3b       # split.json(같은 Fold), slots.csv(z_i OOF 비교)
+output_dir: results/step5_diagnostics/qwen2_5_vl_3b/hq_probe
+status: diagnostic
+
+folds: 4
+seed: 42
+threshold: 0.5
+scopes: [per_class, pooled]   # per_class: z_i Probe와 같은 구조 / pooled: 20개 클래스 통합 (h_q는 질문의 클래스를 봄)
+probe:
+  c: 1.0
+  class_weight: balanced
+  max_iter: 1000
+  tolerance_grad: 0.0000001
+bootstrap_reps: 1000
+verification:
+  atol: 0.00001
+  rtol: 0.00001

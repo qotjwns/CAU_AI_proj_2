@@ -1,0 +1,23 @@
+source: user_provided_conversation_summary
+comparison_status: reference_only
+mode_a_grouping: PPN_response_estimated
+limitations:
+  - Original per-case CSV and exact historical case list are unavailable.
+  - Mode A grouping by the PPN response is an estimate, not a confirmed historical definition.
+  - Historical preprocessing, pooling precision and runtime settings are not fully verified.
+category: person
+model_name: Qwen/Qwen2.5-VL-3B-Instruct
+layers: [9, 18, 27, 36]
+hidden_size: 2048
+sample_counts:
+  cases: 35
+  unique_inputs: 30
+  unique_images: 14
+atol: 0.000001
+rtol: 0.0
+values:
+  - {mode: A, comparison: PPN-NNN, layer: 27, response_group: False-Yes, mean: 0.014716}
+  - {mode: A, comparison: PPN-NNN, layer: 27, response_group: Correct-No, mean: 0.014653}
+  - {mode: B, comparison: NPP-PNP, layer: 27, response_group: No->No, mean: 0.008280}
+  - {mode: B, comparison: NPP-PNP, layer: 27, response_group: Yes->No, mean: 0.044825}
+  - {mode: B, comparison: NPP-PNP, layer: 27, response_group: Yes->Yes, mean: 0.046805}

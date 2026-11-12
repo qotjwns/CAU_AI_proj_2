@@ -1,0 +1,16 @@
+source: user_provided_conversation_summary
+comparison_status: reference_only
+category: person
+model_name: Qwen/Qwen2.5-VL-3B-Instruct
+layers: [9, 18, 27, 36]
+split:
+  train_cases: 800
+  validation_cases: 200
+  unit: case
+validation_accuracy_range: [0.930, 0.947]
+notes:
+  - Probe AND raised overall accuracy but lowered PPP accuracy (qualitative; no per-case values).
+limitations:
+  - Original case list, split and per-layer values are unavailable; only the 93.0-94.7% range is known.
+  - Whether train and validation shared image IDs is unknown.
+  - The current run uses image_id-grouped 4-fold out-of-fold predictions; values are not directly comparable.

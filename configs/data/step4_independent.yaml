@@ -1,0 +1,9 @@
+# STEP 4 독립 검증 데이터: STEP 1~3에서 쓴 이미지를 모두 제외하고 클래스마다 새 이미지를 뽑는다.
+seed: 2026
+source_config: configs/data/balanced3.yaml   # image_dir, prompt (STEP 1과 동일)
+pool_dir: data/balanced3/pools               # STEP 1과 같은 P/N 후보 기준 (bbox 면적 5% 이상, crowd 제외)
+exclude_cases_jsonl:                          # 여기 등장하는 이미지는 전역에서 제외하고, 클래스 목록도 여기서 가져온다
+  - data/balanced3/inference_cases/inference_groups_top20_seed42_A_cases.jsonl
+  - data/balanced3/inference_cases/inference_groups_top20_seed42_B_cases.jsonl
+images_per_label: 24                          # 클래스별 P 24장 + N 24장 (3의 배수)
+output_dir: data/step4_independent

@@ -1,0 +1,70 @@
+# STEP 4 독립 검증: 고정 Probe를 새 이미지에 적용 (재학습·임계값 조정 금지)
+run_dir: results/step4/qwen2_5_vl_3b/extraction       # STEP 4 GPU 본 추출 결과 (파일럿은 적용 불가)
+output_dir: results/step4/qwen2_5_vl_3b
+frozen_dir: results/step4/qwen2_5_vl_3b/frozen/v1      # 수정이 필요하면 v2로 새로 고정하고 --reason 기록
+step3_analysis: results/step3/qwen2_5_vl_3b/analysis.json
+status: independent_validation
+
+evaluation_cases: data/step4_independent/step4_seed2026_cases.jsonl              # freeze 시 해시 고정, 이후 변경 금지
+consistency_check: data/step4_independent/step4_seed2026_consistency_check.json  # freeze 전 통과 필요
+
+training:                                              # 고정 Probe 학습 데이터 (STEP 3과 동일)
+  run_dir: results/step2/qwen2_5_vl_3b
+  step3_config: configs/experiments/step3.yaml         # c, class_weight, threshold, 중복 허용치
+
+# 사전 지정: STEP 3 결과를 보고 정했으며, STEP 4 모델 출력이 생기기 전에 freeze로 고정한다.
+# 적용 시에는 이 값이 아니라 고정 manifest의 값을 쓰며, 둘이 다르면 실행을 거부한다.
+preregistration:
+  decided_before_step4_data: true
+  note: "Primary layers and scopes were chosen from STEP 3 results and fixed before any STEP 4 model output existed."
+  unit_of_analysis: "unique model input (prompt, ordered image_ids); records sharing an input are counted once"
+  threshold_rule: "an image is predicted P if its probability >= the frozen threshold"
+  z_i:
+    primary_layer: 36
+    secondary_layers: [9, 18, 27]
+  h_q:
+    primary_layer: 27
+    primary_scope: pooled
+    secondary_scopes: [per_class]
+    secondary_layers: [9, 18, 36]
+    role: "Observational readout for H1-B only. Not the STEP 5 intervention decision readout s_i = f(h_q, z_i)."
+  primary:
+    H1-A:
+      metric: "z_i L36 strict discrepancy rate"
+      numerator: "VLM False-Yes inputs whose three images are all classified correctly by the frozen z_i probes"
+      denominator: "VLM False-Yes inputs (ground truth No, VLM answer Yes; unparsed answers are not False-Yes)"
+    H1-B:
+      metric: "h_q L27 pooled N-localization accuracy"
+      numerator: "one-N inputs whose lowest readout probability is at the N position"
+      denominator: "one-N inputs (PPN, PNP, NPP; balanced by design), reported overall, within VLM False-Yes and per composition"
+      chance: 0.3333
+  comparisons:
+    correct_no_matched: >-
+      False-Yes vs Correct-No restricted to PPN/PNP/NPP. Cells are (class, composition); Correct-No cell rates are
+      weighted by False-Yes cell counts over cells that contain both groups. Difference = False-Yes minus standardized Correct-No.
+    correct_no_same_negative_image: >-
+      For each (class, N image) present in both groups: mean over its False-Yes inputs minus mean over its Correct-No
+      inputs, averaged over N images.
+    zi_vs_hq_same_inputs: >-
+      z_i L36 vs h_q L27 pooled on identical inputs: strict (False-Yes) and N-localization (one-N, False-Yes);
+      2x2 counts and difference with bootstrap CI; McNemar p is reported for reference only (assumes independent inputs).
+  secondary:
+    - "Probe AND accuracy (Yes only if all three probabilities >= threshold) vs VLM accuracy"
+    - "PPP retention rate: VLM-correct PPP that Probe AND keeps as Yes"
+    - "False-Yes correction rate split into N detection and positive-image errors; Probe AND new False-Yes"
+    - "Other layers and the per-class h_q readouts"
+  statistics:
+    method: "95% percentile cluster bootstrap"
+    reps: 1000
+    seed: 42
+    resampling_unit: "distinct original image_id in the STEP 4 evaluation set, drawn with replacement"
+    case_rule: "a case's weight is the product of its three images' draw counts (zero if any image is not drawn)"
+    image_rule: "image-level units are weighted by their image's draw count"
+    paired_n_image_rule: "same-N-image comparisons weight each N image by its draw count"
+    degenerate_rule: "replicates with a zero denominator are dropped; the number of valid replicates is reported"
+
+examples_per_category: 5
+duplicate_cosine_tolerance: 0.001
+verification:
+  atol: 0.00001
+  rtol: 0.00001
