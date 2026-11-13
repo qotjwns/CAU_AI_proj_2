@@ -11,6 +11,8 @@
   참고값으로 99% 미만), 참조 경로 불일치 → 실패.
 - 제외 규칙(고정본 v2): 무개입 답이 바뀐 입력(A: 짝 입력·batch 무개입 행, B: 무개입 행)은 분석에서 빠지고 개수가
   보고되며, 심은 효과는 여전히 지지된다.
+- 고정본 v3 회귀 시험: C1 donor가 없는 단위의 짝 입력·무개입 행이 바뀌어도 평가가 끝까지 돌고, '바뀐 단위 포함'
+  민감도 분석은 C1 donor가 있는 단위 전체가 된다 (v2 코드는 여기서 KeyError로 멈췄다).
 """
 import copy
 import random
@@ -18,7 +20,7 @@ import random
 from src.common.config import read_yaml
 from src.common.paths import project_path
 from src.core.causal_check import check_a, check_b
-from src.core.causal_conditions import A_TARGET, a_work, b_work
+from src.core.causal_conditions import A_DIRECTIONS, A_TARGET, a_work, b_work
 from src.core.causal_eval import LABELS, analyze_a, analyze_b
 from src.core.causal_freeze import experiment_config
 from src.core.causal_plan import load_plan
@@ -238,6 +240,17 @@ def eval_test():
     require(all(s["n"] > rows[h]["n"] for s, h in zip(sensitivity, ("A-H1", "A-H2"))),
             "Sensitivity analysis including changed units is missing")
     outcomes["A_exclusions"] = {h: r["excluded"] for h, r in rows.items()}
+
+    no_c1 = [(u, d) for u in confirmation for d in A_DIRECTIONS if u[d]["c1_donor"] is None]
+    require(len(no_c1) >= 2, "The plan has too few C1-less confirmation units for the v3 regression test")
+    run = fake_a(plan, "main", planted, changed=[u["false_yes_input"] for u, _ in no_c1[::2]],
+                 changed_none={f"{u['unit_id']}::{d}" for u, d in no_c1[1::2]})
+    report = analyze_a(plan, run, preregistration_a, N_LAYERS)
+    sensitivity = {r["direction"]: r["n"] for r in report["secondary"]
+                   if r["analysis"].startswith("sensitivity: including")}
+    expected = {d: sum(1 for u in confirmation if u[d]["c1_donor"] is not None) for d in A_DIRECTIONS}
+    require(sensitivity == expected, f"Sensitivity population is not all units with a C1 donor: {sensitivity} vs {expected}")
+    outcomes["A_no_c1_changed_v3"] = {"c1_less_units_changed": len(no_c1), "sensitivity_n": sensitivity}
 
     run = fake_b(plan, "main", b_null)
     checks = check_b("main", plan, run, verification)

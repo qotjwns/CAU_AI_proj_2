@@ -40,15 +40,21 @@
 - 탐색(판정과 무관): 같은 a에서는 z_N이 동일한데(prefix 성질) b가 늘면 False-Yes가 오른다. 이는 exploratory 관찰이며,
   어느 처리 단계(attention, 집계, 최종 결정)가 원인인지는 이 실험으로 정하지 않는다. 장수도 함께 바뀌어 분리되지 않는다.
 
-## STEP 5-3 인과 실험 A·B (사전 등록 고정, GPU 실행 전)
+## STEP 5-3 인과 실험 A·B (사전 등록 고정, GPU 실행 완료, 평가 전)
 
-`step5_3/`: 고정 manifest 사본 4개(A `patching/frozen/v1`·`v2`, B `attention/frozen/v1`·`v2`), 계획 검사(`plan_check.json`),
+`step5_3/`: 고정 manifest 사본 6개(A `patching/frozen/v1`·`v2`·`v3`, B `attention/frozen/v1`·`v2`·`v3`), 계획 검사(`plan_check.json`),
 freeze 전 표본 수·예상 CI 반폭(`prefreeze_report.json`), 분할(`split.json`, seed 53).
 - 고정 시각: v1은 A 13:13:03Z, B 13:13:04Z. v2는 A 13:24:31Z, B 13:24:32Z (모두 2026-11-13).
-  모두 5-3 모델 출력이 생기기 전이다. **평가는 v2를 쓴다.**
+  모두 5-3 모델 출력이 생기기 전이다. GPU 실행은 v2로 했다.
 - v2 수정 (사용자 승인, v1 보존): 답 일치 기준을 bf16 동점 근처(|m| ≤ 0.125)가 아닌 쌍에 적용하고, 전체 일치율은
   참고값으로 낸다. margin 기준은 전체 쌍에 그대로 적용한다. 새 계산 경로에서 무개입 답이 바뀐 입력은 분석에서 빼고
   개수를 보고한다. 이유와 변경 항목은 v2 manifest의 `revision`에 있다.
+- GPU 실행 (2026-11-13, RTX 4090, 고정본 v2): 연습 실행·본 실행 검사 모두 통과. 결과 묶음 `cache/step5_causal/step5_3_results.tar`
+  (sha256 21b55e2d…, git 밖).
+- v3 (2026-11-14, 사용자 승인, GPU 실행 뒤·확증 값 전, v1·v2 보존): v2 코드의 A 평가가 부가 민감도 분석에서 `KeyError`로
+  멈췄다. 원문 로그는 `step5_3/a_eval_v2_crash_log.txt`에 있다. 평가 쪽 파일만 고쳐 다시 고정했다:
+  A `patching/frozen/v3` 7cb1fdaa…, B `attention/frozen/v3` 9850639c…. **평가는 v3를 쓴다.**
+  경위·수정·확인은 계획서 §0과 v3 manifest의 `revision`에 있다.
 - 계획 파일 원본(`data/step5_causal/`, 34MB)은 git 밖에 있다. 해시는 manifest와 `plan_check.json`에 기록돼 있다.
 - 계획서: `docs/plans/step5_3_causal_ab.md`
 

@@ -1,0 +1,263 @@
+{
+  "status": "frozen",
+  "experiment": "B",
+  "version": "v3",
+  "created_at": "2026-11-13T16:45:11+00:00",
+  "note": "Frozen after the STEP 5-3 GPU run and before any confirmation value; the run was made under v2 and only evaluation-side files may differ from it (see revision). The evaluation must use this preregistration; a change requires a new version with a recorded reason.",
+  "revision": {
+    "version": "v3",
+    "previous_version": "v2",
+    "made_before_any_step5_3_gpu_output": false,
+    "made_before_any_confirmation_value": true,
+    "run_frozen_version": "v2",
+    "approved_by": "user, 2026-11-14",
+    "reason": "The single A evaluation under frozen v2 (requested 2026-11-13T16:31:49Z) stopped with KeyError ('c1', 14) in the secondary sensitivity analysis \"including units whose no-intervention answer changed\". The preregistration defines that population as all units with a C1 donor, but the code chose units by exclusion reason only; because a changed answer is ranked before \"no C1 donor\", C1-less units with a changed answer entered it and had no C1 rows. No analysis.json was written and no confirmation-half value was displayed or saved; selection.json (selection half only) was written before the stop and moved unread to the crash folder. The traceback shows the selected layer of one direction (14), a selection-half value. Full log: results/step5/qwen2_5_vl_3b/patching/evaluation/v2_crash/error_log.txt (copy: docs/results/step5/step5_3/a_eval_v2_crash_log.txt). The GPU run made under v2 is reused unchanged. Experiment B has not been evaluated; its analysis code is unchanged, but it shares the hashed evaluation files, so it moves to v3 with A.",
+    "changes": [
+      "A secondary sensitivity analysis 'including units whose no-intervention answer changed' is restricted to units with a C1 donor, as preregistered (src/core/causal_eval.py, one line). Primary analysis, selection, exclusion rule and all other analyses unchanged.",
+      "Fake-data regression test: C1-less units whose pair input or no-intervention row changed (experiments/step5_causal/selftest_eval.py).",
+      "evaluate.py accepts the main run made under v2 only if every file whose hash differs between v2 and v3 is evaluation-side (causal_eval, causal_freeze, evaluate, selftest_eval, this config) and preregistration, verification, stop conditions, baseline hashes and plan counts are identical (causal_freeze.run_compatibility).",
+      "A: the selection recomputed under v3 must equal the v2 selection record left before the stop (same sha256); otherwise INVALID.json is written before any confirmation-half value is computed.",
+      "causal_freeze.py allows a revision after the GPU run only if made before any confirmation value and naming the run's frozen version."
+    ],
+    "unchanged": "preregistration (hypotheses, units and items, split, interventions, outcomes, minimum effects, selection rules, decision rules, statistics, exclusion rule), verification thresholds, GPU run code and outputs",
+    "prior_partial_evaluation": null
+  },
+  "run_frozen": {
+    "dir": "results/step5/qwen2_5_vl_3b/attention/frozen/v2",
+    "version": "v2",
+    "manifest_sha256": "0a127b1822a66e5dbcb3ad4b147977a4fc14d64a7be8a9d8b096849cfde28375"
+  },
+  "previous_versions": [
+    {
+      "frozen_dir": "results/step5/qwen2_5_vl_3b/attention/frozen/v1",
+      "manifest_sha256": "6a779b39ec55a606ea887b25950cf849c9da39bd3cffaca2ca57eabf9170f978"
+    },
+    {
+      "frozen_dir": "results/step5/qwen2_5_vl_3b/attention/frozen/v2",
+      "manifest_sha256": "0a127b1822a66e5dbcb3ad4b147977a4fc14d64a7be8a9d8b096849cfde28375"
+    }
+  ],
+  "preregistration": {
+    "decided_before_step5_3b_data": true,
+    "version_note": "v3: user decisions 1-7 (2026-11-13) incorporated; robust label requires both class CIs. Frozen v2: answer-agreement scope and exclusion of changed inputs (see revision)",
+    "scope": "Tests whether the answer depends on attention from the text tokens after the images (question and chat-template tokens, including the last input token) to the N image's tokens, by blocking or boosting that attention within one 4-layer band and comparing with the same intervention on one P image of the same input. The N location is taken from the ground truth (oracle); this is a mechanism test, not a deployable correction. Images and baseline outputs are reused from STEP 5-2 / 5-2b (selection / confirmation split), not an independent test on new images.",
+    "data": {
+      "split": "selection / confirmation halves by N image ID, seed 53 (configs/data/step5_causal_split.yaml)",
+      "grid": "STEP 5-2b one-N inputs, 3-5 images, every N position (11,520 inputs)",
+      "block_population": "inputs answered No in the 5-2b main run (Correct-No): 6,499",
+      "boost_population": "inputs answered Yes in the 5-2b main run (False-Yes): 5,021",
+      "all_positive": "STEP 5-2 All-P inputs with 3-5 images answered Yes in the 5-2 main run: 3,994 (side effects only)",
+      "baseline_answers": "fixed from the baseline runs before any 5-3 output; inclusion never uses 5-3 outputs",
+      "exclusion": "Frozen v2. An input whose no-intervention row on the new computation path answers differently from the baseline answer is excluded from all analyses in both halves (band selection, B-H1 / B-H2, secondary and descriptive results, All-P side effects) and counted by half and population."
+    },
+    "intervention": {
+      "query_primary": "every input position after the last image's vision-end marker up to and including the last input token (question text and chat-template tokens; 26-28 tokens per input in 5-2b), all 16 attention heads; generated tokens are not modified",
+      "query_secondary": "the last input token only (the v1 primary site); reported as a secondary analysis (one-N only)",
+      "target_tokens": "the image's image-pad token span (manifest image_spans); vision start / end marker tokens are not included",
+      "bands": [
+        [
+          1,
+          4
+        ],
+        [
+          5,
+          8
+        ],
+        [
+          9,
+          12
+        ],
+        [
+          13,
+          16
+        ],
+        [
+          17,
+          20
+        ],
+        [
+          21,
+          24
+        ],
+        [
+          25,
+          28
+        ],
+        [
+          29,
+          32
+        ],
+        [
+          33,
+          36
+        ]
+      ],
+      "block": "the additive attention mask entries from the query positions to the target tokens are set to the minimum of the mask dtype (bf16) in every layer of the band: target weight 0, the rest renormalized",
+      "boost": "log(4) added to those attention logits before the softmax in every layer of the band, stored in the mask dtype (bf16: 1.3828125, a multiplicative factor of 3.986 on the target's unnormalized weight)",
+      "targets": {
+        "N": "the N image",
+        "P_control": "the P image of the same input whose image token count is closest to the N image's; ties -> the one closest in position to N; then the earlier one",
+        "all_positive": "the image in the N slot (5-2 placement) and a control P image chosen by the same rule; primary query only"
+      },
+      "generation": "greedy, max_new_tokens 8, the model's generation config (repetition penalty 1.05) as in the baseline extraction; continues from the intervened state",
+      "computation": "Fast path: the prefix up to and including the last image's vision-end marker is computed once per input with a KV cache; the post-image tokens are recomputed for all conditions of an input in one batch (explicit additive 4D mask in every layer), with the no-intervention row in the same batch."
+    },
+    "outcomes": {
+      "margin": "fp32 variant margin (as STEP 5-2)",
+      "delta": "Delta m(target) = intervened margin minus the no-intervention margin of the same batch",
+      "contrast": "C = Delta m(N) - Delta m(P_control), per input",
+      "answer_parsing": "as STEP 5-2"
+    },
+    "band_selection": {
+      "data": "selection half only, primary query",
+      "block": "the band with the largest mean C over the block population",
+      "boost": "the band with the smallest (most negative) mean C over the boost population",
+      "ties": "means within 1e-9 are ties -> the earliest band",
+      "record": "written to selection.json (with a SHA-256 of its content) by the evaluation code before any confirmation-half value is computed",
+      "secondary_query": "bands for the last-token-only condition are chosen by the same rule and reported descriptively"
+    },
+    "hypotheses": {
+      "B-H1": {
+        "name": "necessity of attention to N",
+        "statement": "Blocking attention from the post-image text tokens to N raises the Yes - No margin of Correct-No inputs, and raises it more than blocking attention to a P image.",
+        "estimates": {
+          "contrast": "mean C under blocking at the selected block band, over confirmation-half block inputs",
+          "n_arm": "mean Delta m(N) under the same blocking, same inputs"
+        },
+        "weighting": "each input equal weight; image counts and positions pooled",
+        "direction": "positive",
+        "minimum_effect": 0.5
+      },
+      "B-H2": {
+        "name": "correction by boosting attention to N",
+        "statement": "Boosting attention from the post-image text tokens to N lowers the Yes - No margin of False-Yes inputs, and lowers it more than boosting attention to a P image.",
+        "estimates": {
+          "contrast": "mean C under boosting at the selected boost band, over confirmation-half boost inputs",
+          "n_arm": "mean Delta m(N) under the same boosting, same inputs"
+        },
+        "weighting": "each input equal weight; image counts and positions pooled",
+        "direction": "negative",
+        "minimum_effect": -0.5
+      },
+      "note": "B-H1 and B-H2 are decided separately; neither changes any STEP 5-2 / 5-2b decision."
+    },
+    "minimum_effect": {
+      "confirmed": true,
+      "confirmed_by": "user, 2026-11-13, before any STEP 5-3 output",
+      "margin_logit": 0.5,
+      "rationale": "Larger than the 5-2b H1b margin effect (middle minus last, +0.36) and smaller than the 5-2 N-last P4 - P1 margin effect (+0.87); four bf16 margin steps (0.125). Preliminary projected 97.5% CI half-width per half: 0.05-0.18 using the baseline margin SD (1.21) as a proxy for the SD of C and Delta m(N) (0.08-0.29 if the SD is 2.0)."
+    },
+    "decision": {
+      "level": "97.5% intervals (Bonferroni for two primary hypotheses), N-image cluster bootstrap",
+      "joint_condition_note": "Support requires both the contrast condition and the N-arm condition; because both must hold (intersection-union), no further multiplicity adjustment is applied.",
+      "B-H1": {
+        "supported": "(1) mean C >= 0.5 AND N-image cluster 97.5% CI lower bound of C > 0; AND (2) mean Delta m(N) > 0 AND N-image cluster 97.5% CI lower bound of Delta m(N) > 0",
+        "robust_label": "'robust support' only if the class cluster 97.5% CI lower bounds of both C and Delta m(N) are also > 0; otherwise 'support (cross-class generalization uncertain)' (confirmed by the user, 2026-11-13)",
+        "no_meaningful_difference": "N-image cluster 97.5% CI upper bound of C < 0.5",
+        "otherwise": "inconclusive; the unmet condition is stated (contrast, N arm, or both)"
+      },
+      "B-H2": {
+        "supported": "(1) mean C <= -0.5 AND N-image cluster 97.5% CI upper bound of C < 0; AND (2) mean Delta m(N) < 0 AND N-image cluster 97.5% CI upper bound of Delta m(N) < 0",
+        "robust_label": "'robust support' only if the class cluster 97.5% CI upper bounds of both C and Delta m(N) are also < 0; otherwise 'support (cross-class generalization uncertain)' (confirmed by the user, 2026-11-13)",
+        "no_meaningful_difference": "N-image cluster 97.5% CI lower bound of C > -0.5",
+        "otherwise": "inconclusive; the unmet condition is stated (contrast, N arm, or both)"
+      },
+      "p_arm_report": "Delta m(P_control) for the same inputs and band is always reported with its sign, estimate and 97.5% N-image cluster CI (no decision); it shows whether C comes from the N side or the P side."
+    },
+    "statistics": {
+      "method": "percentile cluster bootstrap; 97.5% for B-H1 / B-H2 and the P-arm report, 95% for secondary results (labelled)",
+      "resampling_unit": "N image ID within the confirmation half; all inputs of a drawn N image enter together",
+      "sensitivity": "class cluster bootstrap (robust label)",
+      "reps": 1000,
+      "seed": 42
+    },
+    "secondary": {
+      "last_token_only": "C, Delta m(N) and Delta m(P_control) for the last-token-only query condition (at its own selected bands and at the primary bands)",
+      "answer_change": "block: share of Correct-No inputs whose answer becomes Yes; boost: share of False-Yes inputs whose answer becomes No (oracle correction rate); N and P targets, at the selected bands",
+      "breakdown": "by image count (3, 4, 5) and N position (first / middle / last), at the selected bands",
+      "band_curves": "mean C, Delta m(N), Delta m(P) for all nine bands, both halves and both query conditions; confirmation-half bands other than the selected ones are exploratory",
+      "margin_bf16": "the same contrasts with the bf16 'Yes' / 'No' margin",
+      "all_positive_side_effect": "block and boost (primary query) on the N-slot image and on the control P image of All-P inputs answering Yes without intervention (confirmation half): share whose answer becomes No (95% CI at the selected bands, estimates for every band) and Delta margin; a share above 0.05 at a selected band is flagged as a warning",
+      "sensitivity": "contrasts repeated (1) including the inputs excluded because their no-intervention answer changed (frozen v2) and (2) without inputs whose baseline bf16 margin sign disagrees with the baseline answer (ties included)"
+    },
+    "interpretation": [
+      "Oracle N location: the result shows dependence on attention to N, not a usable correction method.",
+      "Only the direct path from the post-image text tokens to N is changed. Image tokens after N may already carry information from N, and that indirect path is left intact; its size depends on the N position (none for N-last), which is stated when positions are compared.",
+      "The P control matches token count, not position; position differences between N and the control remain.",
+      "Images and baseline outputs are reused (selection / confirmation split), not an independent test on new images."
+    ],
+    "revision_note": "v1 used the last input token as the only query and excluded the question-text-span variant as a separate candidate. v2 (user, 2026-11-13) makes the post-image text tokens (question span + last token) the primary query, which absorbs that variant; the last-token-only condition becomes secondary. A question-span-only condition (without the last token) is not included.",
+    "integrity_checks": [
+      "no-intervention fast path reproduces the 5-2b / 5-2 baseline: parsed answer agreement >= 0.99 among inputs whose baseline bf16 margin is more than one bf16 step from a tie (|margin| > 0.125), and |fp32 variant margin difference| <= 0.25 in >= 99% of all inputs (else stop); all-input answer agreement reported (frozen v2)",
+      "fast path vs reference path (model.generate full prefill with the same attention change) on every pilot row: same thresholds, near-ties judged on the reference row (else stop)",
+      "zero-size intervention row (pilot) equals the no-intervention row of the same batch within the same thresholds, near-ties judged on the no-intervention row; the exact-equality share is reported",
+      "image token spans and the post-image boundary identical to the baseline runs (checked for every input before running)",
+      "run.json records GPU type, driver, CUDA and library versions"
+    ],
+    "reported_not_decided": [
+      "answer agreement over all compared pairs, near-ties included (frozen v2 reference value)",
+      "numbers of excluded inputs (changed no-intervention answer) by half and population"
+    ]
+  },
+  "verification": {
+    "answer_agreement_min": 0.99,
+    "near_tie_bf16_margin": 0.125,
+    "margin_abs_tolerance": 0.25,
+    "margin_within_share_min": 0.99
+  },
+  "stop_conditions": {
+    "rules": [
+      "fast-path equivalence check fails (pilot)",
+      "any integrity criterion fails (pilot or main)",
+      "estimated main-run time from measured pilot times exceeds the limit"
+    ],
+    "max_estimated_hours": 8,
+    "estimate_file": "results/step5/qwen2_5_vl_3b/causal_time_estimate.json"
+  },
+  "files_sha256": {
+    "configs/experiments/step5_attention.yaml": "724a296b32dde9a19312b7eae05ec0174bd69667ab1b71b3916976f189497473",
+    "configs/data/step5_causal_split.yaml": "2680858d54428482f969d6f51e6f0d12956eca2495340f1cec68e79e88048620",
+    "src/core/causal_plan.py": "a6e91bdacb22c6188c938dcdc321b4fcebeb3b4d3d4f0d3f796216574ab98eaf",
+    "src/core/causal_conditions.py": "1bba923de3e396cebbe9fff0df898f4e555aeb0dbe6228a7db0520e4bb1a699f",
+    "src/core/causal_runtime.py": "56157e67a1affe1d8e45af3ba3b5c802c5fed9901ae2d2fb8a63cb66e1f7f542",
+    "src/core/causal_check.py": "f851fc86368ed3ec287a407dfb4aacdd2ac27e505cf811f891d7589f2806f30f",
+    "src/core/causal_freeze.py": "d6fb4507d1967c7a0328a671e588030649b1f6fc8ee96ba6e27b93ebea7ddba6",
+    "src/core/causal_eval.py": "79bdb8b985acc9189ae5463cd039c3313cb19bf0e0471a5884aee4ae5a3a5e9e",
+    "scripts/build_step5_causal_plan.py": "7b7cc182ced3222aa96b15074237abef653036c7073e674d8d166f9eea8841aa",
+    "experiments/step5_causal/run.py": "8971f05a12505dfd5aed4d4416cce959086a298d7e52d67f14841980425b3a4b",
+    "experiments/step5_causal/check.py": "c514b396627f0ab9d8f281e2ccb979b3351859bbbd6b7d2111f4024d8d9c574a",
+    "experiments/step5_causal/freeze.py": "892054e0ff59175d41a41429fcccb3dfc2070b7585f31fc64feb45c7fb0be0fc",
+    "experiments/step5_causal/evaluate.py": "c07b36d425d11f139b48203f77e3cdb40c59fcb60105e274f9d5bffe11ee7441",
+    "experiments/step5_causal/selftest.py": "3791e3775df95b116ea8d5c561f48296a6d796aba1da3ca102ecdf8e39a5bec1",
+    "experiments/step5_causal/selftest_eval.py": "526946fc7c324d9a2e5040452bca8913f3cef2ab433d249adf56e1e694341aa7",
+    "scripts/step5_causal_gpu.sh": "7b564b67c1087c7b202a96346404b0c4096f006fb133f31ff2f5d2c872aeeaf5",
+    "src/core/model.py": "0e59ad96cbb752a252f86ac8a53244307be2bb357bce88a9a0773814ed0f85aa",
+    "src/core/inference.py": "d869077e3043ccaa46bce91308f72fa6cb32bff7a92542b36225d46d04b89fb2",
+    "src/core/prompts.py": "828bd34bff2e6b6e2184a1e5395b8a8ae5bfaecbd2a628c10a6db3d40a8f6a39",
+    "src/core/features.py": "83a327b164f91669501f0884de76e0a891dc0012e23d06480ed8415b2d2ec000",
+    "src/core/accumulation_explore.py": "d14ac7715939ef1698408dc73f040b71170b53f6ac5b02c8e4a2c289ec69870c",
+    "src/core/probe_cases.py": "9de3a9815f5cab3f7557031ad954091c9d62205229e1a09b6429ef55535c4d47",
+    "src/common/environment.py": "44366b714e9625337bcababe69f1028bc14e38cf15c3b36d5c7a0c1e042a8b2b",
+    "data/step5_causal/plan_check.json": "3512aebbfd5c0794f1faa50e273c048a005638571ef1481afd31f878da776e40",
+    "data/step5_causal/prefreeze_report.json": "fcafbeb3f378bcd64748cd16f5091c292b867da76f13164a20db41ba47697baf",
+    "data/step5_causal/split.json": "4b87267da5006c50c9529531fe49f4cc846c774f57aed7f5d94e0ecc2812d32a",
+    "data/step5_causal/inputs.jsonl": "cf7148cdfd5f5ec6e99f8ce5cdb08f6ead1bef06b1e85d7f8fe82ecd47134140",
+    "data/step5_causal/a_units.jsonl": "64f321ac5ad5556b85428658bd208711c510294b3774df8f7ec95ae74036a9ef",
+    "data/step5_causal/a_allp.jsonl": "8ce99869e63dd967e343127d84fc3328cd8b4601ba7d0889b469f0880c62516a",
+    "data/step5_causal/b_items.jsonl": "73e2388e2de9a4c7b5df120da72058548888e23644d070724d1c26e732d13c7a"
+  },
+  "baseline_sha256": {
+    "results/step5/qwen2_5_vl_3b/position/extraction/manifest.jsonl": "c5eecdb99c21672a04ff7f87e9a190ac323d3418636ccca254fc5359f0423cc8",
+    "results/step5/qwen2_5_vl_3b/position/extraction/run.json": "06c84b0649f11b522160a563a3245a6afa51b663889bb2a87b7559ad64024bec",
+    "results/step5/qwen2_5_vl_3b/accumulation/extraction/manifest.jsonl": "ddcf8790dd9c5f1b0a66b410ec4cdea94dd3a9f50280fb9fb1675f7f420415e2",
+    "results/step5/qwen2_5_vl_3b/accumulation/extraction/run.json": "7133d930ee4584ebec0ae611d7b0e515a5087f066c31eb3643de90d3784d111e",
+    "results/step5/qwen2_5_vl_3b/position/frozen/v1/manifest.json": "2a4a6c56e94914eca6898f0f981cb568ce9f4a7fe8ce1f58be3b2662c99018c7",
+    "results/step5/qwen2_5_vl_3b/accumulation/frozen/v2/manifest.json": "8b76d02ca609672bbcba0fe337c020dc6f716c5ae993dd288111ac39affae54b"
+  },
+  "plan_counts": {
+    "inputs": 15596,
+    "a_units": 1186,
+    "a_allp_pairs": 590,
+    "b_items": 15514
+  }
+}

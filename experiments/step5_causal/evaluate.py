@@ -5,6 +5,9 @@ python -m experiments.step5_causal.evaluate --experiment A                # 본 
 
 판정에 쓰는 값은 고정 manifest의 사전 등록에서 읽는다. 선택 절반의 층·구간 선택을 selection.json에 먼저 기록한 뒤
 확증 절반을 계산한다. 평가 후 고정 파일 해시를 다시 확인하고, 바뀌었으면 INVALID.json을 남기고 실패한다.
+고정본 v3: 본 실행(v2)과 평가 고정본이 다르면 평가 쪽 파일만 바뀌었는지 확인한다(run_compatibility). v2 평가가 멈추기
+전에 남긴 선택 기록이 있으면(revision.prior_partial_evaluation) 새 선택이 그것과 같아야 하며, 다르면 확증 절반을
+계산하기 전에 INVALID.json을 남기고 멈춘다.
 """
 import argparse
 from datetime import datetime, timezone
@@ -17,7 +20,7 @@ from src.common.paths import project_path, project_relative_path
 from src.common.threads import configure_cpu_threads
 from src.core.causal_check import load_run
 from src.core.causal_eval import analyze_a, analyze_b
-from src.core.causal_freeze import changed_files, experiment_config, verify_causal_freeze
+from src.core.causal_freeze import changed_files, experiment_config, run_compatibility, verify_causal_freeze
 from src.core.causal_plan import load_plan
 from src.core.feature_validation import require
 from src.core.probe_freeze import sha256_file
@@ -62,11 +65,21 @@ def load_inputs(experiment):
     run_dir = project_path(config["main_dir"])
     check = read_json(run_dir / "main_check.json")
     require(check["status"] == "passed" and not check["failed"], "The main integrity check did not pass")
-    require(check["frozen_version"] == manifest["version"], "The main check used another frozen version")
     run = load_run(run_dir)
     require(run["meta"]["status"] == "completed" and run["meta"]["stage"] == "main", "The main run is incomplete")
-    require(run["meta"]["frozen"]["version"] == manifest["version"], "The main run used another frozen version")
-    return config, manifest, plan, run
+    require(check["frozen_version"] == run["meta"]["frozen"]["version"], "The main check and run used different versions")
+    compatibility = run_compatibility(experiment, manifest, run["meta"]["frozen"])
+    return config, manifest, plan, run, compatibility
+
+
+def prior_selection(manifest):
+    """v2 평가가 멈추기 전에 남긴 선택 기록 (revision.prior_partial_evaluation). 파일 해시가 기록과 같아야 한다."""
+    prior = (manifest.get("revision") or {}).get("prior_partial_evaluation")
+    if not prior:
+        return None
+    path = project_path(prior["selection_file"])
+    require(sha256_file(path) == prior["selection_file_sha256"], f"The prior selection record changed: {path}")
+    return {"file": prior["selection_file"], "sha256": read_json(path)["sha256"]}
 
 
 def main():
@@ -76,23 +89,33 @@ def main():
     parser.add_argument("--check-only", action="store_true", help="고정 해시·무결성 검사·구조만 확인 (지표 계산 안 함)")
     parser.add_argument("--rerun-reason", help="평가 결과가 이미 있을 때 다시 실행하는 이유 (rerun_log.json에 기록)")
     args = parser.parse_args()
-    config, manifest, plan, run = load_inputs(args.experiment)
+    config, manifest, plan, run, compatibility = load_inputs(args.experiment)
     output_dir = project_path(config["evaluation_dir"])
+    prior = prior_selection(manifest)
     if args.check_only:
         summary = {"note": "Structure only: no contrast is computed.", "frozen_version": manifest["version"],
+                   "run_compatibility": compatibility, "prior_selection_record": prior is not None,
                    "batches": len(run["batches"]), "phase1": len(run["phase1"]), "plan_counts": plan["check"]["counts"]}
         write_json(summary, output_dir / "preflight.json", allow_nan=False)
         print(f"구조 확인 통과 (지표 계산 안 함): {summary}")
         return
     record_rerun(output_dir, args.rerun_reason)
     output_dir.mkdir(parents=True, exist_ok=True)
+    prior_match = {}
 
     def on_selection(selection):
         text = json.dumps(selection, ensure_ascii=False, sort_keys=True, allow_nan=False)
+        digest = hashlib.sha256(text.encode()).hexdigest()
         write_json({"recorded_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
                     "note": "Selected on the selection half before any confirmation-half value was computed.",
-                    "selection": selection, "sha256": hashlib.sha256(text.encode()).hexdigest()},
-                   output_dir / "selection.json", allow_nan=False)
+                    "selection": selection, "sha256": digest}, output_dir / "selection.json", allow_nan=False)
+        if prior is not None:
+            prior_match.update(file=prior["file"], prior_sha256=prior["sha256"], sha256=digest,
+                               matches=digest == prior["sha256"])
+            if not prior_match["matches"]:
+                write_json({"status": "invalid", "reason": "The selection differs from the prior v2 selection record",
+                            **prior_match}, output_dir / "INVALID.json")
+                raise SystemExit("무효: 선택 결과가 v2 평가가 남긴 선택 기록과 다릅니다 (확증 절반 계산 전 중단)")
 
     preregistration = manifest["preregistration"]
     if args.experiment == "A":
@@ -106,7 +129,8 @@ def main():
                             "created_at": manifest["created_at"], "hypotheses": preregistration["hypotheses"],
                             "decision": preregistration["decision"], "statistics": preregistration["statistics"]},
         "run": {"dir": config["main_dir"], "environment_gpus": run["meta"]["environment"].get("gpus"),
-                "versions": run["meta"].get("versions")},
+                "versions": run["meta"].get("versions"), "frozen": run["meta"]["frozen"]},
+        "run_compatibility": compatibility, "prior_selection_check": prior_match or None,
         "evaluated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"), **sections,
     }
     write_json(report, output_dir / "analysis.json", allow_nan=False)

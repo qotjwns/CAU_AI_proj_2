@@ -268,8 +268,11 @@ python -m experiments.step5_causal.evaluate --experiment A
 python -m experiments.step5_causal.evaluate --experiment B
 ```
 
-- 결과: `results/step5/qwen2_5_vl_3b/{patching,attention}/` (`frozen/v1`·`v2`, `pilot`, `main`, `evaluation`).
-  고정본 v2(GPU 출력 전 수정)를 쓴다. 답 일치 기준은 bf16 동점 근처(|m| ≤ 0.125)를 뺀 입력에 적용하고, 무개입 답이 바뀐 입력은 분석에서 빼고 개수를 보고한다
+- 결과: `results/step5/qwen2_5_vl_3b/{patching,attention}/` (`frozen/v1`·`v2`·`v3`, `pilot`, `main`, `evaluation`).
+  GPU 실행은 고정본 v2(GPU 출력 전 수정)로 했다. 답 일치 기준은 bf16 동점 근처(|m| ≤ 0.125)를 뺀 입력에 적용하고, 무개입 답이 바뀐 입력은 분석에서 빼고 개수를 보고한다
+- 평가는 고정본 v3로 한다. v2 코드의 A 평가가 부가 민감도 분석의 대상 선택 오류로 멈춰서, 확증 값을 보기 전에 평가 쪽 파일만 고쳤다.
+  v3 평가는 실행 고정본(v2)과 평가 쪽 파일만 다른지, 그리고 선택 결과가 v2 기록과 같은지 확인한다.
+  경위: 계획서 §0, 오류 로그 `evaluation/v2_crash/error_log.txt`
 - 평가 원칙 (사전 기록): 게이트의 PPP 유지율은 선별하지 않은 P 이미지(STEP 4의 PPP 입력)로 측정한다.
   5-2·5-2b의 P 이미지는 Probe 양성으로 고른 것이라 유지율을 낙관적으로 만든다.
 

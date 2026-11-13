@@ -222,8 +222,10 @@ def analyze_a(plan, run, preregistration, n_layers, on_selection=None):
         add("margin contrast (fp32 variant)", direction, layer, confirmation, "margin")
         add("margin contrast (bf16)", direction, layer, confirmation, "margin_bf16")
         inputs = plan["inputs"]
+        # 사전 등록: C1 donor가 있는 단위 전체. 사유 판정에서 '답 바뀜'이 'C1 없음'보다 앞서므로 C1 유무를 따로 본다 (v3)
         add("sensitivity: including units whose no-intervention answer changed", direction, layer,
-            a_units_for(units, status, "confirmation", direction, WITH_C1_INCLUDING_CHANGED))
+            a_units_for(units, status, "confirmation", direction, WITH_C1_INCLUDING_CHANGED,
+                        keep=lambda u: u[direction]["c1_donor"] is not None))
         add("sensitivity: baseline bf16 margin sign agrees with answer", direction, layer,
             [u for u in confirmation if sign_consistent(inputs[u[direction]["recipient"]])])
     side_effects = a_side_effects(pairs, run["batches"], selection, reps, seed, plan, changed)

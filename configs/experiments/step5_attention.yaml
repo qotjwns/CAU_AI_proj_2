@@ -12,7 +12,7 @@ baseline:
   all_positive_frozen: results/step5/qwen2_5_vl_3b/accumulation/frozen/v2
 pilot_dir: results/step5/qwen2_5_vl_3b/attention/pilot
 main_dir: results/step5/qwen2_5_vl_3b/attention/main
-frozen_dir: results/step5/qwen2_5_vl_3b/attention/frozen/v2      # v1 보존, v2 = 5-3 GPU 출력 전 수정
+frozen_dir: results/step5/qwen2_5_vl_3b/attention/frozen/v3      # v1·v2 보존, v3 = GPU 실행 뒤·확증 값 전 평가 코드 수정
 evaluation_dir: results/step5/qwen2_5_vl_3b/attention/evaluation
 verification:                  # 사용자 승인 2026-11-13 (v2: 답 일치 적용 범위)
   answer_agreement_min: 0.99   # 비교 기준 쪽 bf16 margin이 동점에서 한 칸(0.125)보다 멀리 있는 쌍에서
@@ -55,21 +55,32 @@ code_files:
   - src/core/probe_cases.py
   - src/common/environment.py
 
-revision:                      # 고정본 v2: 5-3 GPU 출력 전 수정 (사용자 승인 2026-11-13). v1 manifest는 그대로 보존
-  version: v2
-  previous_version: v1
-  made_before_any_step5_3_gpu_output: true
-  approved_by: "user, 2026-11-13"
+revision:                      # 고정본 v3: GPU 실행 뒤, 확증 값을 보기 전 평가 코드 수정 (사용자 승인 2026-11-14). v1·v2 manifest 보존
+  version: v3
+  previous_version: v2
+  made_before_any_step5_3_gpu_output: false
+  made_before_any_confirmation_value: true
+  run_frozen_version: v2
+  approved_by: "user, 2026-11-14"
   reason: >-
-    In the 5-2b baseline, 3.6% of inputs have exactly equal bf16 'Yes' and 'No' logits (all answered No through the
-    lower token id) and 11% are within one bf16 step (|bf16 margin| <= 0.125). The fast path computes the same model in
-    a different order, so such ties can break differently without any error, and the v1 rule (answer agreement >= 99%
-    over all inputs) could stop a correct run. Recorded before any STEP 5-3 pilot or main output existed.
+    The single A evaluation under frozen v2 (requested 2026-11-13T16:31:49Z) stopped with KeyError ('c1', 14) in the
+    secondary sensitivity analysis "including units whose no-intervention answer changed". The preregistration defines
+    that population as all units with a C1 donor, but the code chose units by exclusion reason only; because a changed
+    answer is ranked before "no C1 donor", C1-less units with a changed answer entered it and had no C1 rows. No
+    analysis.json was written and no confirmation-half value was displayed or saved; selection.json (selection half only)
+    was written before the stop and moved unread to the crash folder. The traceback shows the selected layer of one
+    direction (14), a selection-half value. Full log: results/step5/qwen2_5_vl_3b/patching/evaluation/v2_crash/error_log.txt
+    (copy: docs/results/step5/step5_3/a_eval_v2_crash_log.txt). The GPU run made under v2 is reused unchanged.
+    Experiment B has not been evaluated; its analysis code is unchanged, but it shares the hashed evaluation files, so
+    it moves to v3 with A.
   changes:
-    - "Answer-agreement criterion: >= 99% among compared pairs whose comparison-standard bf16 margin is more than one bf16 step from a tie (|margin| > 0.125); the all-pair answer agreement is reported as a reference value."
-    - "The margin criterion is unchanged and applies to all pairs, near-ties included (|fp32 variant margin difference| <= 0.25 in >= 99%)."
-    - "Inputs whose no-intervention answer on the new computation path differs from the baseline answer are excluded from all analyses (both halves) and counted; a sensitivity analysis including them replaces the v1 sensitivity analysis restricted to unchanged answers."
-  unchanged: "hypotheses, units and items, split, interventions, outcomes, minimum effects, selection rules, decision rules, statistics"
+    - "A secondary sensitivity analysis 'including units whose no-intervention answer changed' is restricted to units with a C1 donor, as preregistered (src/core/causal_eval.py, one line). Primary analysis, selection, exclusion rule and all other analyses unchanged."
+    - "Fake-data regression test: C1-less units whose pair input or no-intervention row changed (experiments/step5_causal/selftest_eval.py)."
+    - "evaluate.py accepts the main run made under v2 only if every file whose hash differs between v2 and v3 is evaluation-side (causal_eval, causal_freeze, evaluate, selftest_eval, this config) and preregistration, verification, stop conditions, baseline hashes and plan counts are identical (causal_freeze.run_compatibility)."
+    - "A: the selection recomputed under v3 must equal the v2 selection record left before the stop (same sha256); otherwise INVALID.json is written before any confirmation-half value is computed."
+    - "causal_freeze.py allows a revision after the GPU run only if made before any confirmation value and naming the run's frozen version."
+  unchanged: "preregistration (hypotheses, units and items, split, interventions, outcomes, minimum effects, selection rules, decision rules, statistics, exclusion rule), verification thresholds, GPU run code and outputs"
+  prior_partial_evaluation: null  # B는 평가한 적 없음
 
 preregistration:
   decided_before_step5_3b_data: true
