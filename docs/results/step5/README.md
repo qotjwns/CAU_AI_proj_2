@@ -42,9 +42,13 @@
 
 ## STEP 5-3 인과 실험 A·B (사전 등록 고정, GPU 실행 전)
 
-`step5_3/`: 고정 manifest 사본 2개(A `patching/frozen/v1`, B `attention/frozen/v1`), 계획 검사(`plan_check.json`),
+`step5_3/`: 고정 manifest 사본 4개(A `patching/frozen/v1`·`v2`, B `attention/frozen/v1`·`v2`), 계획 검사(`plan_check.json`),
 freeze 전 표본 수·예상 CI 반폭(`prefreeze_report.json`), 분할(`split.json`, seed 53).
-- 고정 시각: A 2026-11-13T13:13:03Z, B 2026-11-13T13:13:04Z. 둘 다 5-3 모델 출력이 생기기 전이다.
+- 고정 시각: v1은 A 13:13:03Z, B 13:13:04Z. v2는 A 13:24:31Z, B 13:24:32Z (모두 2026-11-13).
+  모두 5-3 모델 출력이 생기기 전이다. **평가는 v2를 쓴다.**
+- v2 수정 (사용자 승인, v1 보존): 답 일치 기준을 bf16 동점 근처(|m| ≤ 0.125)가 아닌 쌍에 적용하고, 전체 일치율은
+  참고값으로 낸다. margin 기준은 전체 쌍에 그대로 적용한다. 새 계산 경로에서 무개입 답이 바뀐 입력은 분석에서 빼고
+  개수를 보고한다. 이유와 변경 항목은 v2 manifest의 `revision`에 있다.
 - 계획 파일 원본(`data/step5_causal/`, 34MB)은 git 밖에 있다. 해시는 manifest와 `plan_check.json`에 기록돼 있다.
 - 계획서: `docs/plans/step5_3_causal_ab.md`
 

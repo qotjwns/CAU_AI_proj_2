@@ -12,10 +12,11 @@ baseline:
   all_positive_frozen: results/step5/qwen2_5_vl_3b/accumulation/frozen/v2
 pilot_dir: results/step5/qwen2_5_vl_3b/patching/pilot
 main_dir: results/step5/qwen2_5_vl_3b/patching/main
-frozen_dir: results/step5/qwen2_5_vl_3b/patching/frozen/v1
+frozen_dir: results/step5/qwen2_5_vl_3b/patching/frozen/v2      # v1 보존, v2 = 5-3 GPU 출력 전 수정
 evaluation_dir: results/step5/qwen2_5_vl_3b/patching/evaluation
-verification:                  # 사용자 승인 2026-11-13
-  answer_agreement_min: 0.99
+verification:                  # 사용자 승인 2026-11-13 (v2: 답 일치 적용 범위)
+  answer_agreement_min: 0.99   # 비교 기준 쪽 bf16 margin이 동점에서 한 칸(0.125)보다 멀리 있는 쌍에서
+  near_tie_bf16_margin: 0.125  # |bf16 margin| <= 0.125 = 동점이거나 한 칸 이내 → 답 일치 기준에서 제외, 전체 일치율은 참고값
   margin_abs_tolerance: 0.25
   margin_within_share_min: 0.99
   final_layer_donor_tolerance: 0.01
@@ -54,9 +55,25 @@ code_files:
   - src/core/probe_cases.py
   - src/common/environment.py
 
+revision:                      # 고정본 v2: 5-3 GPU 출력 전 수정 (사용자 승인 2026-11-13). v1 manifest는 그대로 보존
+  version: v2
+  previous_version: v1
+  made_before_any_step5_3_gpu_output: true
+  approved_by: "user, 2026-11-13"
+  reason: >-
+    In the 5-2b baseline, 3.6% of inputs have exactly equal bf16 'Yes' and 'No' logits (all answered No through the
+    lower token id) and 11% are within one bf16 step (|bf16 margin| <= 0.125). The fast path computes the same model in
+    a different order, so such ties can break differently without any error, and the v1 rule (answer agreement >= 99%
+    over all inputs) could stop a correct run. Recorded before any STEP 5-3 pilot or main output existed.
+  changes:
+    - "Answer-agreement criterion: >= 99% among compared pairs whose comparison-standard bf16 margin is more than one bf16 step from a tie (|margin| > 0.125); the all-pair answer agreement is reported as a reference value."
+    - "The margin criterion is unchanged and applies to all pairs, near-ties included (|fp32 variant margin difference| <= 0.25 in >= 99%)."
+    - "Inputs whose no-intervention answer on the new computation path differs from the baseline answer are excluded from all analyses (both halves) and counted; a sensitivity analysis including them replaces the v1 sensitivity analysis restricted to unchanged answers."
+  unchanged: "hypotheses, units and items, split, interventions, outcomes, minimum effects, selection rules, decision rules, statistics"
+
 preregistration:
   decided_before_step5_3a_data: true
-  version_note: "v3: user decisions 1-7 (2026-11-13) incorporated; expanded A units adopted"
+  version_note: "v3: user decisions 1-7 (2026-11-13) incorporated; expanded A units adopted. Frozen v2: answer-agreement scope and exclusion of changed inputs (see revision)"
   scope: >-
     Tests whether the residual state of the last input token (h_q, the token that predicts the answer) at one decoder
     layer carries information specific to the image set that changes the answer. h_q is patched between two orders
@@ -71,6 +88,13 @@ preregistration:
       (False-Yes) and the N-last input of the same series and n answered No (Correct-No) in the 5-2b main run.
       1,186 units (390 first + 796 middle; n = 3: 351, 4: 404, 5: 431) from 313 N images; about 590 per half.
     baseline_answers: "parsed answers of the 5-2b main run, fixed before any 5-3 output; inclusion never uses 5-3 outputs"
+    exclusion: >-
+      Frozen v2. Inputs whose no-intervention answer on the new computation path differs from the baseline answer are
+      excluded from all analyses in both halves and counted. A unit is excluded in both directions if its False-Yes or
+      N-last input changed in its own no-intervention run (phase 1); a unit and direction is excluded if the
+      recipient's no-intervention row in that batch differs from the baseline answer, or if its C1 donor changed
+      (counted separately from units without a C1 donor). The same rule applies to layer selection, all secondary and
+      descriptive results and the All-P side effect (recipient and donor unchanged, recipient answering Yes).
   intervention:
     site: >-
       Output (residual stream) of decoder layer l at the last input token, i.e. the input of decoder layer l + 1
@@ -173,22 +197,21 @@ preregistration:
       each other at every l; reported at l*_restore and l*_contaminate on the confirmation half: share of recipients
       answering Yes without intervention whose answer becomes No, and Delta margin.
     sensitivity: >-
-      contrasts repeated (1) without units whose recipient's no-intervention answer differs from the baseline answer
-      and (2) without units whose recipient's baseline bf16 margin sign disagrees with the baseline answer (ties included)
+      contrasts repeated (1) including the units excluded because a no-intervention answer changed (frozen v2; all units
+      with a C1 donor) and (2) without units whose recipient's baseline bf16 margin sign disagrees with the baseline
+      answer (ties included)
   interpretation:
     - "The same-set donor differs from the recipient in image order, so set-specific and order information are not separated."
     - "The C1 donor has a different total token count (closest chosen); its value is placed at the recipient's last position."
     - "First and middle positions are pooled; the 5-2b middle - first False-Yes difference was inconclusive (+0.04)."
     - "Images and baseline outputs are reused (selection / confirmation split), not an independent test on new images."
   integrity_checks:
-    - "no-intervention fast path reproduces the 5-2b / 5-2 baseline answers and margins: parsed answer agreement >= 0.99 and |fp32 variant margin difference| <= 0.25 in >= 99% of inputs (else stop)"
-    - "fast path vs reference path (model.generate full prefill with the same patch) on every pilot row: same thresholds (else stop)"
-    - "l = 0 patch equals the no-intervention row of the same batch within the same thresholds (the last input token is the same token in every input); the exact-equality share is reported"
-    - "l = 36 patch reproduces the donor's no-intervention fp32 variant margin within 0.01 in every row, and its parsed answer in >= 99% of rows"
+    - "no-intervention fast path reproduces the 5-2b / 5-2 baseline: parsed answer agreement >= 0.99 among inputs whose baseline bf16 margin is more than one bf16 step from a tie (|margin| > 0.125), and |fp32 variant margin difference| <= 0.25 in >= 99% of all inputs (else stop); all-input answer agreement reported (frozen v2)"
+    - "fast path vs reference path (model.generate full prefill with the same patch) on every pilot row: same thresholds, near-ties judged on the reference row (else stop)"
+    - "l = 0 patch equals the no-intervention row of the same batch within the same thresholds, near-ties judged on the no-intervention row (the last input token is the same token in every input); the exact-equality share is reported"
+    - "l = 36 patch reproduces the donor's no-intervention fp32 variant margin within 0.01 in every row, and its parsed answer under the same answer rule (near-ties judged on the donor)"
     - "image token spans identical to the baseline runs (checked for every input before running)"
     - "run.json records GPU type, driver, CUDA and library versions"
   reported_not_decided:
-    - >-
-      answer agreement excluding inputs whose baseline bf16 margin is within one bf16 step (|margin| <= 0.125): 3.6% of
-      5-2b inputs are exact bf16 Yes/No ties (resolved as No by the lower token id) and 11% are within one step, so a
-      different but correct computation path can break such ties differently
+    - "answer agreement over all compared pairs, near-ties included (frozen v2 reference value)"
+    - "numbers of excluded units by reason and half (changed pair, changed no-intervention row, no C1, changed C1)"

@@ -222,8 +222,8 @@ def pipeline_test(dtype=torch.float32):
 
     model, processor, answer_ids = tiny_model(dtype)
     runner = Runner(model, processor, answer_ids, answer_variant_ids(processor.tokenizer))
-    verification = {"answer_agreement_min": 0.99, "margin_abs_tolerance": 0.25, "margin_within_share_min": 0.99,
-                    "final_layer_donor_tolerance": 0.01}
+    verification = {"answer_agreement_min": 0.99, "near_tie_bf16_margin": 0.125, "margin_abs_tolerance": 0.25,
+                    "margin_within_share_min": 0.99, "final_layer_donor_tolerance": 0.01}
     with tempfile.TemporaryDirectory() as folder:
         folder = Path(folder)
         generator = torch.Generator().manual_seed(3)

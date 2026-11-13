@@ -1,0 +1,201 @@
+{
+  "status": "frozen",
+  "experiment": "A",
+  "version": "v2",
+  "created_at": "2026-11-13T13:24:31+00:00",
+  "note": "Frozen before any STEP 5-3 pilot or main run. The evaluation must use this preregistration; a change requires a new version with a recorded reason.",
+  "revision": {
+    "version": "v2",
+    "previous_version": "v1",
+    "made_before_any_step5_3_gpu_output": true,
+    "approved_by": "user, 2026-11-13",
+    "reason": "In the 5-2b baseline, 3.6% of inputs have exactly equal bf16 'Yes' and 'No' logits (all answered No through the lower token id) and 11% are within one bf16 step (|bf16 margin| <= 0.125). The fast path computes the same model in a different order, so such ties can break differently without any error, and the v1 rule (answer agreement >= 99% over all inputs) could stop a correct run. Recorded before any STEP 5-3 pilot or main output existed.",
+    "changes": [
+      "Answer-agreement criterion: >= 99% among compared pairs whose comparison-standard bf16 margin is more than one bf16 step from a tie (|margin| > 0.125); the all-pair answer agreement is reported as a reference value.",
+      "The margin criterion is unchanged and applies to all pairs, near-ties included (|fp32 variant margin difference| <= 0.25 in >= 99%).",
+      "Inputs whose no-intervention answer on the new computation path differs from the baseline answer are excluded from all analyses (both halves) and counted; a sensitivity analysis including them replaces the v1 sensitivity analysis restricted to unchanged answers."
+    ],
+    "unchanged": "hypotheses, units and items, split, interventions, outcomes, minimum effects, selection rules, decision rules, statistics"
+  },
+  "previous_versions": [
+    {
+      "frozen_dir": "results/step5/qwen2_5_vl_3b/patching/frozen/v1",
+      "manifest_sha256": "dba09660f517f3787e784d7758c03b20a72188f22a5c1d9e4ffb8f951beb1552"
+    }
+  ],
+  "preregistration": {
+    "decided_before_step5_3a_data": true,
+    "version_note": "v3: user decisions 1-7 (2026-11-13) incorporated; expanded A units adopted. Frozen v2: answer-agreement scope and exclusion of changed inputs (see revision)",
+    "scope": "Tests whether the residual state of the last input token (h_q, the token that predicts the answer) at one decoder layer carries information specific to the image set that changes the answer. h_q is patched between two orders of the same images (a non-last N position answered Yes, the N-last order answered No) and compared with a condition-matched donor from a different image set. Images and baseline outputs are reused from STEP 5-2 / 5-2b: this is a selection / confirmation split of existing data, not an independent test on new images.",
+    "data": {
+      "split": "selection / confirmation halves by N image ID, seed 53 (configs/data/step5_causal_split.yaml)",
+      "units": "Expanded definition (adopted by the user, 2026-11-13). Same series (one N image x one strength) and same image count n in {3, 4, 5}: an input with N at a non-last position a (first a = 0 or middle) answered Yes (False-Yes) and the N-last input of the same series and n answered No (Correct-No) in the 5-2b main run. 1,186 units (390 first + 796 middle; n = 3: 351, 4: 404, 5: 431) from 313 N images; about 590 per half.",
+      "baseline_answers": "parsed answers of the 5-2b main run, fixed before any 5-3 output; inclusion never uses 5-3 outputs",
+      "exclusion": "Frozen v2. Inputs whose no-intervention answer on the new computation path differs from the baseline answer are excluded from all analyses in both halves and counted. A unit is excluded in both directions if its False-Yes or N-last input changed in its own no-intervention run (phase 1); a unit and direction is excluded if the recipient's no-intervention row in that batch differs from the baseline answer, or if its C1 donor changed (counted separately from units without a C1 donor). The same rule applies to layer selection, all secondary and descriptive results and the All-P side effect (recipient and donor unchanged, recipient answering Yes)."
+    },
+    "intervention": {
+      "site": "Output (residual stream) of decoder layer l at the last input token, i.e. the input of decoder layer l + 1 (l = 0 is the embedding output; l = 36 is the input of the final norm).",
+      "operation": "Replace the recipient's value at the site with the donor's value at the same site. The donor value comes from the donor's own no-intervention run on the same computation path. All other positions and layers are unchanged. Greedy generation (max_new_tokens 8, the model's generation config including its repetition penalty 1.05, as in the baseline extraction) continues from the patched state.",
+      "layers_run": "l = 0..36 (l = 1..36 is the sweep; l = 0 and l = 36 also serve as integrity checks)",
+      "directions": {
+        "restore": "recipient = the False-Yes input of a unit; same-set donor = the unit's N-last Correct-No input; target answer No",
+        "contaminate": "recipient = the unit's N-last Correct-No input; same-set donor = the unit's False-Yes input; target answer Yes"
+      },
+      "control_donor_C1": "An input of a different N image in the same half with the same class and image count (identical prompt), the same N position and the same baseline answer as the same-set donor (restore: N-last answered No; contaminate: N at the same a answered Yes). Among candidates, the one whose total input token count is closest to the recipient's; remaining ties are broken by a seeded draw (seed 53, units in sorted order). One C1 donor per unit and direction, recorded in the plan before any GPU run. Units without a candidate are excluded from that direction's primary contrast and counted.",
+      "computation": "Fast path: the prefix (all tokens before the last input token) is computed once per recipient with a KV cache; the last token is recomputed for all conditions of a unit and direction in one batch, with the no-intervention row in the same batch."
+    },
+    "outcomes": {
+      "answer_parsing": "as STEP 5-2 (greedy, max_new_tokens 8, strip, trailing punctuation removed, case-folded)",
+      "success": "restore: parsed answer No; contaminate: parsed answer Yes; unparsed is not a success",
+      "change_rate": "share of units with a success",
+      "margin": "fp32 variant margin (as STEP 5-2). Delta margin = patched margin minus the no-intervention margin of the same batch."
+    },
+    "layer_selection": {
+      "confirmed_by": "user, 2026-11-13 (per direction)",
+      "data": "selection half only; units that have a C1 donor in that direction",
+      "candidates": "l = 1..35. l = 36 is excluded because both donors then reproduce their own answer, so the difference is 0 by construction; l = 0 is an identity check.",
+      "score": "S(l) = (number of units with a success under the same-set donor) - (number under the C1 donor); integer counts",
+      "rule": "per direction: l*_restore = argmax S_restore(l), l*_contaminate = argmax S_contaminate(l); ties -> the smallest l",
+      "non_positive": "if max S(l) <= 0, l* is still chosen by the rule and the confirmation decision proceeds unchanged (reported)",
+      "record": "written to selection.json (with a SHA-256 of its content) by the evaluation code before any confirmation-half value is computed"
+    },
+    "hypotheses": {
+      "A-H1": {
+        "name": "restoration specificity",
+        "statement": "At l*_restore, the same-set donor turns False-Yes into No more often than the C1 donor.",
+        "estimate": "mean over confirmation-half units of [success(same-set donor) - success(C1 donor)] at l*_restore",
+        "weighting": "each unit equal weight; image counts 3-5 and positions (first, middle) pooled",
+        "direction": "positive",
+        "minimum_effect": 0.15
+      },
+      "A-H2": {
+        "name": "contamination specificity",
+        "statement": "At l*_contaminate, the same-set donor turns Correct-No into Yes more often than the C1 donor.",
+        "estimate": "mean over confirmation-half units of [success(same-set donor) - success(C1 donor)] at l*_contaminate",
+        "weighting": "each unit equal weight (an N-last recipient enters once per unit); image counts and positions pooled",
+        "direction": "positive",
+        "minimum_effect": 0.15
+      },
+      "note": "A-H1 and A-H2 are decided separately; neither changes any STEP 5-2 / 5-2b decision."
+    },
+    "minimum_effect": {
+      "confirmed": true,
+      "confirmed_by": "user, 2026-11-13, before any STEP 5-3 output",
+      "rationale": "The answer change rate is the primary outcome because the margin gap between the two orders of a pair is small (median 0.71-0.94 logit by image count, 0.84 overall), which makes a logit-scale minimum effect too strict. Projected 97.5% CI half-width per half with the expanded units: 0.08-0.10 with within-N-image correlation 0.3 (0.05-0.15 for correlation 0-1; variance of the paired difference 0.30-0.48; 5.4 units per N image weighted)."
+    },
+    "decision": {
+      "level": "97.5% intervals (Bonferroni for two primary hypotheses), N-image cluster bootstrap",
+      "A-H1": {
+        "supported": "estimate >= 0.15 AND N-image cluster 97.5% CI lower bound > 0",
+        "robust_label": "'robust support' only if the class cluster 97.5% CI lower bound is also > 0; otherwise 'support (cross-class generalization uncertain)'",
+        "no_meaningful_difference": "N-image cluster 97.5% CI upper bound < 0.15",
+        "otherwise": "inconclusive"
+      },
+      "A-H2": {
+        "supported": "estimate >= 0.15 AND N-image cluster 97.5% CI lower bound > 0",
+        "robust_label": "'robust support' only if the class cluster 97.5% CI lower bound is also > 0; otherwise 'support (cross-class generalization uncertain)'",
+        "no_meaningful_difference": "N-image cluster 97.5% CI upper bound < 0.15",
+        "otherwise": "inconclusive"
+      }
+    },
+    "statistics": {
+      "method": "percentile cluster bootstrap; 97.5% for A-H1 / A-H2, 95% for secondary and descriptive results (labelled)",
+      "resampling_unit": "the unit's N image ID, within the confirmation half; C1 donors stay fixed",
+      "sensitivity": "class cluster bootstrap (robust label)",
+      "reps": 1000,
+      "seed": 42
+    },
+    "descriptive": {
+      "single_layer": "l*_joint = argmax [S_restore(l) + S_contaminate(l)] on the selection half (same candidates and tie rule); its value and both directions' confirmation-half contrasts at l*_joint (95%), descriptive only.",
+      "earliest_half_restore": "per half: the earliest l (1..36) at which the restore change rate under the same-set donor is >= 0.5 ('none' if no layer reaches it); the same value under the C1 donor for comparison.",
+      "layer_curves": "change rates for both donors and the difference at every l, both directions and both halves; confirmation-half layers other than l* are exploratory."
+    },
+    "secondary": {
+      "by_position": "A-H1 and A-H2 contrasts for first-position units (= the original N-first-only definition) and middle-position units, at l*",
+      "per_count": "the same contrasts for 3, 4 and 5 images",
+      "margin": "Delta margin contrast (same-set minus C1) at l*, fp32 variant and bf16 margins",
+      "all_positive_side_effect": "For the same series and image counts as the units, the two 5-2 All-P orders (N slot first / last) are patched into each other at every l; reported at l*_restore and l*_contaminate on the confirmation half: share of recipients answering Yes without intervention whose answer becomes No, and Delta margin.",
+      "sensitivity": "contrasts repeated (1) including the units excluded because a no-intervention answer changed (frozen v2; all units with a C1 donor) and (2) without units whose recipient's baseline bf16 margin sign disagrees with the baseline answer (ties included)"
+    },
+    "interpretation": [
+      "The same-set donor differs from the recipient in image order, so set-specific and order information are not separated.",
+      "The C1 donor has a different total token count (closest chosen); its value is placed at the recipient's last position.",
+      "First and middle positions are pooled; the 5-2b middle - first False-Yes difference was inconclusive (+0.04).",
+      "Images and baseline outputs are reused (selection / confirmation split), not an independent test on new images."
+    ],
+    "integrity_checks": [
+      "no-intervention fast path reproduces the 5-2b / 5-2 baseline: parsed answer agreement >= 0.99 among inputs whose baseline bf16 margin is more than one bf16 step from a tie (|margin| > 0.125), and |fp32 variant margin difference| <= 0.25 in >= 99% of all inputs (else stop); all-input answer agreement reported (frozen v2)",
+      "fast path vs reference path (model.generate full prefill with the same patch) on every pilot row: same thresholds, near-ties judged on the reference row (else stop)",
+      "l = 0 patch equals the no-intervention row of the same batch within the same thresholds, near-ties judged on the no-intervention row (the last input token is the same token in every input); the exact-equality share is reported",
+      "l = 36 patch reproduces the donor's no-intervention fp32 variant margin within 0.01 in every row, and its parsed answer under the same answer rule (near-ties judged on the donor)",
+      "image token spans identical to the baseline runs (checked for every input before running)",
+      "run.json records GPU type, driver, CUDA and library versions"
+    ],
+    "reported_not_decided": [
+      "answer agreement over all compared pairs, near-ties included (frozen v2 reference value)",
+      "numbers of excluded units by reason and half (changed pair, changed no-intervention row, no C1, changed C1)"
+    ]
+  },
+  "verification": {
+    "answer_agreement_min": 0.99,
+    "near_tie_bf16_margin": 0.125,
+    "margin_abs_tolerance": 0.25,
+    "margin_within_share_min": 0.99,
+    "final_layer_donor_tolerance": 0.01
+  },
+  "stop_conditions": {
+    "rules": [
+      "fast-path equivalence check fails (pilot)",
+      "any integrity criterion fails (pilot or main)",
+      "estimated main-run time from measured pilot times exceeds the limit"
+    ],
+    "max_estimated_hours": 8,
+    "estimate_file": "results/step5/qwen2_5_vl_3b/causal_time_estimate.json"
+  },
+  "files_sha256": {
+    "configs/experiments/step5_patching.yaml": "a0e4a393bf4ecd36c279fa78e1e93c1f24afff52e3bb815f33f77261dd7e53af",
+    "configs/data/step5_causal_split.yaml": "2680858d54428482f969d6f51e6f0d12956eca2495340f1cec68e79e88048620",
+    "src/core/causal_plan.py": "a6e91bdacb22c6188c938dcdc321b4fcebeb3b4d3d4f0d3f796216574ab98eaf",
+    "src/core/causal_conditions.py": "1bba923de3e396cebbe9fff0df898f4e555aeb0dbe6228a7db0520e4bb1a699f",
+    "src/core/causal_runtime.py": "56157e67a1affe1d8e45af3ba3b5c802c5fed9901ae2d2fb8a63cb66e1f7f542",
+    "src/core/causal_check.py": "f851fc86368ed3ec287a407dfb4aacdd2ac27e505cf811f891d7589f2806f30f",
+    "src/core/causal_freeze.py": "fda0c91a86aa65f31d9f9f0ee2dc44f3adb91ba533420594f6d080c9a076f78a",
+    "src/core/causal_eval.py": "fb9af4580f7597be692ca24d0ee7b81f75a71a921ee1ed68121cc045d12bd93f",
+    "scripts/build_step5_causal_plan.py": "7b7cc182ced3222aa96b15074237abef653036c7073e674d8d166f9eea8841aa",
+    "experiments/step5_causal/run.py": "8971f05a12505dfd5aed4d4416cce959086a298d7e52d67f14841980425b3a4b",
+    "experiments/step5_causal/check.py": "c514b396627f0ab9d8f281e2ccb979b3351859bbbd6b7d2111f4024d8d9c574a",
+    "experiments/step5_causal/freeze.py": "892054e0ff59175d41a41429fcccb3dfc2070b7585f31fc64feb45c7fb0be0fc",
+    "experiments/step5_causal/evaluate.py": "637bfb68f510810bdec7e04d1448d430096973a72024520489ce55d94d5f369a",
+    "experiments/step5_causal/selftest.py": "3791e3775df95b116ea8d5c561f48296a6d796aba1da3ca102ecdf8e39a5bec1",
+    "experiments/step5_causal/selftest_eval.py": "ee8a415e47b1e62144dedb69ec4a0a792a0916f58390518d04267b2253278ac2",
+    "scripts/step5_causal_gpu.sh": "7b564b67c1087c7b202a96346404b0c4096f006fb133f31ff2f5d2c872aeeaf5",
+    "src/core/model.py": "0e59ad96cbb752a252f86ac8a53244307be2bb357bce88a9a0773814ed0f85aa",
+    "src/core/inference.py": "d869077e3043ccaa46bce91308f72fa6cb32bff7a92542b36225d46d04b89fb2",
+    "src/core/prompts.py": "828bd34bff2e6b6e2184a1e5395b8a8ae5bfaecbd2a628c10a6db3d40a8f6a39",
+    "src/core/features.py": "83a327b164f91669501f0884de76e0a891dc0012e23d06480ed8415b2d2ec000",
+    "src/core/accumulation_explore.py": "d14ac7715939ef1698408dc73f040b71170b53f6ac5b02c8e4a2c289ec69870c",
+    "src/core/probe_cases.py": "9de3a9815f5cab3f7557031ad954091c9d62205229e1a09b6429ef55535c4d47",
+    "src/common/environment.py": "44366b714e9625337bcababe69f1028bc14e38cf15c3b36d5c7a0c1e042a8b2b",
+    "data/step5_causal/plan_check.json": "3512aebbfd5c0794f1faa50e273c048a005638571ef1481afd31f878da776e40",
+    "data/step5_causal/prefreeze_report.json": "fcafbeb3f378bcd64748cd16f5091c292b867da76f13164a20db41ba47697baf",
+    "data/step5_causal/split.json": "4b87267da5006c50c9529531fe49f4cc846c774f57aed7f5d94e0ecc2812d32a",
+    "data/step5_causal/inputs.jsonl": "cf7148cdfd5f5ec6e99f8ce5cdb08f6ead1bef06b1e85d7f8fe82ecd47134140",
+    "data/step5_causal/a_units.jsonl": "64f321ac5ad5556b85428658bd208711c510294b3774df8f7ec95ae74036a9ef",
+    "data/step5_causal/a_allp.jsonl": "8ce99869e63dd967e343127d84fc3328cd8b4601ba7d0889b469f0880c62516a",
+    "data/step5_causal/b_items.jsonl": "73e2388e2de9a4c7b5df120da72058548888e23644d070724d1c26e732d13c7a"
+  },
+  "baseline_sha256": {
+    "results/step5/qwen2_5_vl_3b/position/extraction/manifest.jsonl": "c5eecdb99c21672a04ff7f87e9a190ac323d3418636ccca254fc5359f0423cc8",
+    "results/step5/qwen2_5_vl_3b/position/extraction/run.json": "06c84b0649f11b522160a563a3245a6afa51b663889bb2a87b7559ad64024bec",
+    "results/step5/qwen2_5_vl_3b/accumulation/extraction/manifest.jsonl": "ddcf8790dd9c5f1b0a66b410ec4cdea94dd3a9f50280fb9fb1675f7f420415e2",
+    "results/step5/qwen2_5_vl_3b/accumulation/extraction/run.json": "7133d930ee4584ebec0ae611d7b0e515a5087f066c31eb3643de90d3784d111e",
+    "results/step5/qwen2_5_vl_3b/position/frozen/v1/manifest.json": "2a4a6c56e94914eca6898f0f981cb568ce9f4a7fe8ce1f58be3b2662c99018c7",
+    "results/step5/qwen2_5_vl_3b/accumulation/frozen/v2/manifest.json": "8b76d02ca609672bbcba0fe337c020dc6f716c5ae993dd288111ac39affae54b"
+  },
+  "plan_counts": {
+    "inputs": 15596,
+    "a_units": 1186,
+    "a_allp_pairs": 590,
+    "b_items": 15514
+  }
+}

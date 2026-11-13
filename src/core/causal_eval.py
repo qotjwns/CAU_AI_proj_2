@@ -3,8 +3,12 @@
 고정 manifest의 사전 등록을 그대로 적용한다. 순서: (1) 선택 절반 결과만으로 층(A)·구간(B)을 고르고 기록 →
 (2) 확증 절반에서 주 판정 → (3) 부가·민감도·기술 통계. 결과를 본 뒤 대비와 판정 기준을 바꾸지 않는다.
 
+제외 (사전 등록 v2): 새 계산 경로의 무개입 답이 기준 실행 답과 달라진 입력은 모든 분석(두 절반)에서 빼고 개수를
+보고한다. 민감도 분석으로 그 입력을 포함한 결과도 낸다.
 실험 A (단위 = 같은 계열·장수의 False-Yes 입력과 N-last Correct-No 입력 짝, 위치 첫·가운데):
-  성공 = 이식 후 파싱한 답이 목표 답 (복원 No, 오염 Yes). 단위 값 = 성공(같은 묶음) − 성공(C1), C1이 있는 단위만.
+  성공 = 이식 후 파싱한 답이 목표 답 (복원 No, 오염 Yes). 단위 값 = 성공(같은 묶음) − 성공(C1).
+  단위·방향 제외 사유 (앞의 것부터): 짝 입력의 무개입 답 변화(phase 1) → 그 batch 무개입 행의 답 변화 →
+  C1 없음 → C1 donor의 무개입 답 변화.
   ℓ*_방향 = 선택 절반 argmax_{ℓ=1..35} Σ 단위 값 (정수, 동률이면 가장 이른 층).
 실험 B (항목 = 입력): Δm(대상) = 개입 margin − 같은 batch 무개입 margin (fp32 변형). C = Δm(N) − Δm(P).
   구간* = 선택 절반 주 query에서 차단은 평균 C 최대, 강화는 평균 C 최소 (1e-9 이내는 동률 → 가장 이른 구간).
@@ -97,13 +101,43 @@ def success(row, direction):
     return int(row["answer"] == A_TARGET[direction])
 
 
-def a_units_for(units, table, half, direction, keep=None):
-    return [u for u in units.values() if u["half"] == half and u[direction]["c1_donor"] is not None
+VALID = ("valid",)
+WITH_C1_INCLUDING_CHANGED = ("valid", "changed_pair", "changed_none_row", "changed_c1")
+SAME_SET_USABLE = ("valid", "no_c1", "changed_c1")
+
+
+def changed_inputs(plan, rows_by_input):
+    """새 계산 경로의 무개입 답이 기준 실행 답과 다른 입력."""
+    return {i for i, row in rows_by_input.items() if row["answer"] != plan["inputs"][i]["baseline"]["prediction"]}
+
+
+def a_status(plan, units, table, changed):
+    status = {}
+    for unit in units.values():
+        for direction in A_DIRECTIONS:
+            spec = unit[direction]
+            baseline = plan["inputs"][spec["recipient"]]["baseline"]["prediction"]
+            if unit["false_yes_input"] in changed or unit["correct_no_input"] in changed:
+                reason = "changed_pair"
+            elif table[(unit["unit_id"], direction)]["none"]["answer"] != baseline:
+                reason = "changed_none_row"
+            elif spec["c1_donor"] is None:
+                reason = "no_c1"
+            elif spec["c1_donor"] in changed:
+                reason = "changed_c1"
+            else:
+                reason = "valid"
+            status[(unit["unit_id"], direction)] = reason
+    return status
+
+
+def a_units_for(units, status, half, direction, allowed=VALID, keep=None):
+    return [u for u in units.values() if u["half"] == half and status[(u["unit_id"], direction)] in allowed
             and (keep is None or keep(u))]
 
 
-def a_select(units, table, direction, n_layers):
-    chosen = a_units_for(units, table, "selection", direction)
+def a_select(units, table, status, direction, n_layers):
+    chosen = a_units_for(units, status, "selection", direction)
     scores = {}
     for layer in range(1, n_layers):
         scores[layer] = sum(success(table[(u["unit_id"], direction)][("same", layer)], direction)
@@ -137,9 +171,11 @@ def analyze_a(plan, run, preregistration, n_layers, on_selection=None):
     table, units, pairs = a_index(plan, run["batches"], n_layers)
     meta = a_meta(units)
     hypotheses = preregistration["hypotheses"]
+    changed = changed_inputs(plan, run["phase1"])
+    status = a_status(plan, units, table, changed)
 
-    # (1) 선택 (선택 절반만)
-    selection = {direction: a_select(units, table, direction, n_layers) for direction in A_DIRECTIONS}
+    # (1) 선택 (선택 절반만, 제외 규칙 적용)
+    selection = {direction: a_select(units, table, status, direction, n_layers) for direction in A_DIRECTIONS}
     joint_scores = {l: selection["restore"]["scores"][l] + selection["contaminate"]["scores"][l]
                     for l in range(1, n_layers)}
     joint = min(l for l, s in joint_scores.items() if s == max(joint_scores.values()))
@@ -153,15 +189,17 @@ def analyze_a(plan, run, preregistration, n_layers, on_selection=None):
     primary = []
     for name, direction in (("A-H1", "restore"), ("A-H2", "contaminate")):
         layer = selection[direction]["layer"]
-        chosen = a_units_for(units, table, "confirmation", direction)
+        chosen = a_units_for(units, status, "confirmation", direction)
         keys, values = a_values(chosen, table, direction, layer)
         minimum = hypotheses[name]["minimum_effect"]
+        excluded = {reason: sum(1 for u in units.values() if u["half"] == "confirmation"
+                                and status[(u["unit_id"], direction)] == reason)
+                    for reason in ("changed_pair", "changed_none_row", "no_c1", "changed_c1")}
         row = {"hypothesis": name, "direction": direction, "layer": layer, "outcome": "answer change rate difference",
                **summarize(meta, keys, values, PRIMARY_LEVEL, reps, seed), "minimum_effect": minimum,
                "same_set_rate": mean([success(table[(k, direction)][("same", layer)], direction) for k in keys]),
                "c1_rate": mean([success(table[(k, direction)][("c1", layer)], direction) for k in keys]),
-               "excluded_without_c1": sum(1 for u in units.values() if u["half"] == "confirmation"
-                                          and u[direction]["c1_donor"] is None)}
+               "excluded": excluded}
         row["label"] = decide_rate(row, minimum)
         primary.append(row)
 
@@ -175,7 +213,7 @@ def analyze_a(plan, run, preregistration, n_layers, on_selection=None):
 
     for direction in A_DIRECTIONS:
         layer = selection[direction]["layer"]
-        confirmation = a_units_for(units, table, "confirmation", direction)
+        confirmation = a_units_for(units, status, "confirmation", direction)
         add("all units (95%)", direction, layer, confirmation)
         add("original definition: N-first only", direction, layer, [u for u in confirmation if u["position"] == "first"])
         add("middle positions only", direction, layer, [u for u in confirmation if u["position"] == "middle"])
@@ -184,24 +222,23 @@ def analyze_a(plan, run, preregistration, n_layers, on_selection=None):
         add("margin contrast (fp32 variant)", direction, layer, confirmation, "margin")
         add("margin contrast (bf16)", direction, layer, confirmation, "margin_bf16")
         inputs = plan["inputs"]
-        baseline_answer = {"restore": "Yes", "contaminate": "No"}[direction]
-        add("sensitivity: recipient no-intervention answer equals baseline", direction, layer,
-            [u for u in confirmation if table[(u["unit_id"], direction)]["none"]["answer"] == baseline_answer])
+        add("sensitivity: including units whose no-intervention answer changed", direction, layer,
+            a_units_for(units, status, "confirmation", direction, WITH_C1_INCLUDING_CHANGED))
         add("sensitivity: baseline bf16 margin sign agrees with answer", direction, layer,
             [u for u in confirmation if sign_consistent(inputs[u[direction]["recipient"]])])
-    side_effects = a_side_effects(pairs, run["batches"], selection, reps, seed)
+    side_effects = a_side_effects(pairs, run["batches"], selection, reps, seed, plan, changed)
 
     # 기술 통계
     descriptive = {"joint_layer": joint, "joint_confirmation": []}
     for direction in A_DIRECTIONS:
-        keys, values = a_values(a_units_for(units, table, "confirmation", direction), table, direction, joint)
+        keys, values = a_values(a_units_for(units, status, "confirmation", direction), table, direction, joint)
         descriptive["joint_confirmation"].append({"direction": direction, "layer": joint,
                                                   **summarize(meta, keys, values, SECONDARY_LEVEL, reps, seed)})
     curves, earliest = [], []
     for half in ("selection", "confirmation"):
         for direction in A_DIRECTIONS:
-            chosen = a_units_for(units, table, half, direction)
-            everyone = [u for u in units.values() if u["half"] == half]
+            chosen = a_units_for(units, status, half, direction)
+            everyone = a_units_for(units, status, half, direction, SAME_SET_USABLE)
             for layer in range(n_layers + 1):
                 same = mean([success(table[(u["unit_id"], direction)][("same", layer)], direction) for u in everyone])
                 c1 = mean([success(table[(u["unit_id"], direction)][("c1", layer)], direction) for u in chosen])
@@ -220,10 +257,10 @@ def analyze_a(plan, run, preregistration, n_layers, on_selection=None):
     descriptive.update(curves=curves, earliest_restore_ge_half=earliest)
     return {"selection": selection_record, "primary": primary, "secondary": secondary,
             "all_positive_side_effects": side_effects, "descriptive": descriptive,
-            "counts": a_counts(units)}
+            "counts": a_counts(units, status), "changed_inputs": sorted(changed)}
 
 
-def a_side_effects(pairs, batches, selection, reps, seed):
+def a_side_effects(pairs, batches, selection, reps, seed, plan, changed):
     rows_out = []
     meta = {p["pair_id"]: (p["anchor"], p["class"]) for p in pairs.values()}
     for label, layer in (("l*_restore", selection["restore"]["layer"]),
@@ -232,17 +269,20 @@ def a_side_effects(pairs, batches, selection, reps, seed):
         for pair in pairs.values():
             if pair["half"] != "confirmation":
                 continue
-            for direction in ALLP_DIRECTIONS:
+            for direction, (recipient, donor) in ALLP_DIRECTIONS.items():
                 batch = batches[f"{pair['pair_id']}::{direction}"]
                 none = batch["rows"][0]
-                if none["answer"] != "Yes":
+                recipient_id = pair["inputs"][recipient]
+                if (plan["inputs"][recipient_id]["baseline"]["prediction"] != "Yes" or none["answer"] != "Yes"
+                        or recipient_id in changed or pair["inputs"][donor] in changed):
                     continue
                 row = next(r for r in batch["rows"] if r["donor_kind"] == "same" and r["layer"] == layer)
                 keys.append(pair["pair_id"])
                 flips.append(int(row["answer"] == "No"))
                 deltas.append(row["margin"] - none["margin"])
         for outcome, values in (("yes_to_no_rate", flips), ("delta_margin", deltas)):
-            rows_out.append({"layer_rule": label, "layer": layer, "outcome": outcome, "unit": "All-P recipient (baseline Yes)",
+            rows_out.append({"layer_rule": label, "layer": layer, "outcome": outcome,
+                             "unit": "All-P recipient answering Yes in the baseline and without intervention",
                              **summarize_repeated(meta, keys, values, SECONDARY_LEVEL, reps, seed)})
     return rows_out
 
@@ -264,15 +304,14 @@ def sign_consistent(entry):
                                                                           and base["prediction"] == "No")
 
 
-def a_counts(units):
+def a_counts(units, status):
     counts = defaultdict(int)
     for unit in units.values():
         counts[f"{unit['half']}_units"] += 1
         counts[f"{unit['half']}_{unit['position']}"] += 1
         for direction in A_DIRECTIONS:
-            if unit[direction]["c1_donor"] is None:
-                counts[f"{unit['half']}_{direction}_without_c1"] += 1
-    return dict(counts)
+            counts[f"{unit['half']}_{direction}_{status[(unit['unit_id'], direction)]}"] += 1
+    return dict(sorted(counts.items()))
 
 
 # ================================================================ 실험 B
@@ -293,9 +332,16 @@ def b_delta(rows, query, kind, target, band, outcome="margin"):
     return rows[(query, kind, target, band)][outcome] - rows["none"][outcome]
 
 
-def b_population(items, half, population, keep=None):
+def b_valid(plan, table, items):
+    """무개입 행의 답이 기준 실행 답과 같은 항목 (사전 등록 v2 제외 규칙)."""
+    return {iid for iid, item in items.items()
+            if table[iid]["none"]["answer"] == plan["inputs"][item["input_id"]]["baseline"]["prediction"]}
+
+
+def b_population(items, half, population, valid, keep=None):
+    """valid가 None이면 제외 규칙을 적용하지 않는다 (민감도 분석)."""
     return [i for i in items.values() if i["half"] == half and i["population"] == population
-            and (keep is None or keep(i))]
+            and (valid is None or i["item_id"] in valid) and (keep is None or keep(i))]
 
 
 def b_band_means(table, chosen, query, kind):
@@ -307,8 +353,8 @@ def b_band_means(table, chosen, query, kind):
     return means
 
 
-def b_select(table, items, population, query="post_image"):
-    chosen = b_population(items, "selection", population)
+def b_select(table, items, population, valid, query="post_image"):
+    chosen = b_population(items, "selection", population, valid)
     means = b_band_means(table, chosen, query, population)
     target = max(means.values()) if population == "block" else min(means.values())
     band = next(b for b in BANDS if abs(means[b] - target) <= TIE)
@@ -335,10 +381,11 @@ def analyze_b(plan, run, preregistration, on_selection=None):
     table, items = b_index(plan, run["batches"])
     meta = {i["item_id"]: (i["anchor"], i["class"]) for i in items.values()}
     hypotheses = preregistration["hypotheses"]
+    valid = b_valid(plan, table, items)
 
-    # (1) 선택 (선택 절반만)
-    selection = {population: b_select(table, items, population) for population in ("block", "boost")}
-    selection["last_token_descriptive"] = {population: b_select(table, items, population, "last_token")
+    # (1) 선택 (선택 절반만, 제외 규칙 적용)
+    selection = {population: b_select(table, items, population, valid) for population in ("block", "boost")}
+    selection["last_token_descriptive"] = {population: b_select(table, items, population, valid, "last_token")
                                            for population in ("block", "boost")}
     if on_selection is not None:
         on_selection(selection)
@@ -347,15 +394,17 @@ def analyze_b(plan, run, preregistration, on_selection=None):
     primary = []
     for name, population, direction in (("B-H1", "block", "positive"), ("B-H2", "boost", "negative")):
         band = tuple(selection[population]["band"])
-        chosen = b_population(items, "confirmation", population)
+        chosen = b_population(items, "confirmation", population, valid)
         keys, contrast, n_arm, p_arm = b_arms(table, chosen, "post_image", population, band)
         minimum = hypotheses[name]["minimum_effect"]
+        excluded = len(b_population(items, "confirmation", population, None)) - len(chosen)
         c_row = summarize(meta, keys, contrast, PRIMARY_LEVEL, reps, seed)
         n_row = summarize(meta, keys, n_arm, PRIMARY_LEVEL, reps, seed)
         p_row = summarize(meta, keys, p_arm, PRIMARY_LEVEL, reps, seed)
         label, unmet = decide_joint(c_row, n_row, minimum, direction)
         primary.append({"hypothesis": name, "population": population, "band": list(band), "direction": direction,
                         "minimum_effect": minimum, "label": label, "unmet_conditions": unmet,
+                        "excluded_changed_no_intervention_answer": excluded,
                         "contrast": c_row, "n_arm": n_row,
                         "p_arm_reported": {**p_row, "sign": None if p_row["estimate"] is None else
                                            ("+" if p_row["estimate"] > 0 else "-" if p_row["estimate"] < 0 else "0")}})
@@ -374,7 +423,7 @@ def analyze_b(plan, run, preregistration, on_selection=None):
     for population in ("block", "boost"):
         band = selection[population]["band"]
         own = selection["last_token_descriptive"][population]["band"]
-        confirmation = b_population(items, "confirmation", population)
+        confirmation = b_population(items, "confirmation", population, valid)
         add("last token only, own selected band", population, "last_token", own, confirmation)
         add("last token only, primary band", population, "last_token", band, confirmation)
         add("primary, bf16 margin", population, "post_image", band, confirmation, "margin_bf16")
@@ -384,8 +433,8 @@ def analyze_b(plan, run, preregistration, on_selection=None):
             add(f"N position {position}", population, "post_image", band,
                 [i for i in confirmation if i["position"] == position])
         baseline_answer = {"block": "No", "boost": "Yes"}[population]
-        add("sensitivity: no-intervention answer equals baseline", population, "post_image", band,
-            [i for i in confirmation if table[i["item_id"]]["none"]["answer"] == baseline_answer])
+        add("sensitivity: including inputs whose no-intervention answer changed", population, "post_image", band,
+            b_population(items, "confirmation", population, None))
         add("sensitivity: baseline bf16 margin sign agrees with answer", population, "post_image", band,
             [i for i in confirmation if sign_consistent(inputs[i["input_id"]])])
         flipped = {"block": "Yes", "boost": "No"}[population]
@@ -396,11 +445,11 @@ def analyze_b(plan, run, preregistration, on_selection=None):
                               "population": population, "query": "post_image", "band": list(band),
                               "outcome": "answer_change_rate", "arm": target,
                               **summarize(meta, keys, values, SECONDARY_LEVEL, reps, seed)})
-    side_effects, warnings = b_side_effects(table, items, selection, meta, reps, seed)
+    side_effects, warnings = b_side_effects(table, items, selection, meta, reps, seed, valid)
     curves = []
     for half in ("selection", "confirmation"):
         for population in ("block", "boost"):
-            chosen = b_population(items, half, population)
+            chosen = b_population(items, half, population, valid)
             for query in ("post_image", "last_token"):
                 for band in BANDS:
                     _, contrast, n_arm, p_arm = b_arms(table, chosen, query, population, band)
@@ -409,13 +458,15 @@ def analyze_b(plan, run, preregistration, on_selection=None):
                                    "mean_delta_P": mean(p_arm)})
     return {"selection": selection, "primary": primary, "secondary": secondary,
             "all_positive_side_effects": side_effects, "warnings": warnings, "descriptive": {"band_curves": curves},
-            "counts": {f"{half}_{population}": len(b_population(items, half, population))
-                       for half in ("selection", "confirmation") for population in ("block", "boost", "all_positive")}}
+            "counts": {f"{half}_{population}_{kind}": len(b_population(items, half, population, rule))
+                       for half in ("selection", "confirmation") for population in ("block", "boost", "all_positive")
+                       for kind, rule in (("planned", None), ("analyzed", valid))},
+            "changed_inputs": sorted(items[i]["input_id"] for i in set(items) - valid)}
 
 
-def b_side_effects(table, items, selection, meta, reps, seed):
+def b_side_effects(table, items, selection, meta, reps, seed, valid):
     rows, warnings = [], []
-    chosen = [i for i in items.values() if i["half"] == "confirmation" and i["population"] == "all_positive"]
+    chosen = b_population(items, "confirmation", "all_positive", valid)
     for kind in ("block", "boost"):
         selected = tuple(selection[kind]["band"])
         for band in BANDS:

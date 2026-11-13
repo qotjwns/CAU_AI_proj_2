@@ -2,7 +2,8 @@
 
 files_sha256: 설정·분할·계획 파일·코드 (GPU 서버에도 있는 파일, 실행 전에 서버에서 다시 확인)
 baseline_sha256: 기준 실행 manifest·run.json과 5-2b·5-2 고정 manifest (로컬 평가 때 다시 확인)
-이미 고정된 버전은 덮어쓰지 않는다.
+이미 고정된 버전은 덮어쓰지 않는다. 이전 버전이 있으면 설정의 revision(버전, 이유, 변경 항목, 5-3 GPU 출력 전
+수정 여부)이 있어야 새 버전을 만들고, 이전 manifest의 해시를 기록한다 (이전 버전 파일은 그대로 둔다).
 """
 from datetime import datetime, timezone
 
@@ -31,6 +32,12 @@ def freeze_causal(experiment, frozen_dir=None, check_outputs=True):
     frozen_dir = project_path(frozen_dir or config["frozen_dir"])
     require(not (frozen_dir / "manifest.json").exists(),
             f"Already frozen: {frozen_dir}. Frozen versions are never overwritten.")
+    earlier = sorted(path for path in frozen_dir.parent.glob("*/manifest.json") if path.parent != frozen_dir)
+    revision = config.get("revision")
+    if earlier:
+        require(revision and revision.get("version") == frozen_dir.name and revision.get("reason")
+                and revision.get("changes") and revision.get("made_before_any_step5_3_gpu_output") is True,
+                "Earlier frozen versions exist; the config needs a revision block (version, reason, changes)")
     preregistration = config["preregistration"]
     require(preregistration["minimum_effect"]["confirmed"] is True, "The minimum effect has not been confirmed")
     require(config["status"] == "confirmatory", "Only a confirmatory config can be frozen")
@@ -59,6 +66,9 @@ def freeze_causal(experiment, frozen_dir=None, check_outputs=True):
         "created_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "note": ("Frozen before any STEP 5-3 pilot or main run. The evaluation must use this preregistration; "
                  "a change requires a new version with a recorded reason."),
+        "revision": revision if earlier else None,
+        "previous_versions": [{"frozen_dir": project_relative_path(path.parent), "manifest_sha256": sha256_file(path)}
+                              for path in earlier],
         "preregistration": preregistration, "verification": config["verification"],
         "stop_conditions": config["stop_conditions"],
         "files_sha256": {path: sha256_file(project_path(path)) for path in dict.fromkeys(paths)},

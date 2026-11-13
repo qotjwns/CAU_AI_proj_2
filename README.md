@@ -268,7 +268,8 @@ python -m experiments.step5_causal.evaluate --experiment A
 python -m experiments.step5_causal.evaluate --experiment B
 ```
 
-- 결과: `results/step5/qwen2_5_vl_3b/{patching,attention}/` (`frozen/v1`, `pilot`, `main`, `evaluation`)
+- 결과: `results/step5/qwen2_5_vl_3b/{patching,attention}/` (`frozen/v1`·`v2`, `pilot`, `main`, `evaluation`).
+  고정본 v2(GPU 출력 전 수정)를 쓴다. 답 일치 기준은 bf16 동점 근처(|m| ≤ 0.125)를 뺀 입력에 적용하고, 무개입 답이 바뀐 입력은 분석에서 빼고 개수를 보고한다
 - 평가 원칙 (사전 기록): 게이트의 PPP 유지율은 선별하지 않은 P 이미지(STEP 4의 PPP 입력)로 측정한다.
   5-2·5-2b의 P 이미지는 Probe 양성으로 고른 것이라 유지율을 낙관적으로 만든다.
 

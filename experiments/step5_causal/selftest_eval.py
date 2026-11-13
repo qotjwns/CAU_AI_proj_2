@@ -7,7 +7,10 @@
 - B 효과 0 → 지지 없음. B 효과 심음: 차단 구간 25–28에서 Δm(N) = +1.2 → B-H1 지지.
   강화에서 대비만 P 쪽에서 생긴 경우(Δm(N) = 0, Δm(P) = +1.0) → B-H2 결론 유보 (조건: N 대상).
   강화 Δm(N) = −1.0 → B-H2 지지. 동률 구간 → 가장 이른 구간. All-P 뒤집힘 10% → 경고.
-- 무결성 검사: 정상 → 통과, 재현 3% 불일치 → 실패, 참조 경로 불일치 → 실패.
+- 무결성 검사: 정상 → 통과, 동점 근처가 아닌 입력 3% 불일치 → 실패, 동점 근처 입력만 불일치 → 통과(전체 일치율은
+  참고값으로 99% 미만), 참조 경로 불일치 → 실패.
+- 제외 규칙(고정본 v2): 무개입 답이 바뀐 입력(A: 짝 입력·batch 무개입 행, B: 무개입 행)은 분석에서 빠지고 개수가
+  보고되며, 심은 효과는 여전히 지지된다.
 """
 import copy
 import random
@@ -33,22 +36,37 @@ def result(answer, margin):
 
 def baseline_result(entry):
     base = entry["baseline"]
-    return result(base["prediction"], base["fp32_variant_logit_margin"])
+    row = result(base["prediction"], base["fp32_variant_logit_margin"])
+    row["margin_bf16"] = base["logit_margin"]
+    return row
+
+
+def flipped(row):
+    return {**row, "answer": "No" if row["answer"] == "Yes" else "Yes"}
+
+
+def near_tie(entry):
+    return abs(entry["baseline"]["logit_margin"]) <= 0.125
 
 
 # ---------------------------------------------------------------- 가짜 A
 
-def fake_a(plan, stage, probability, seed=7, allp_flip=0.02):
-    """probability(direction, donor_kind, layer) → 목표 답이 나올 확률."""
+def fake_a(plan, stage, probability, seed=7, allp_flip=0.02, changed=(), changed_none=()):
+    """probability(direction, donor_kind, layer) → 목표 답이 나올 확률.
+    changed: 무개입 답(phase 1)이 기준과 달라진 입력, changed_none: 무개입 행만 달라진 batch."""
     rng = random.Random(seed)
     work = a_work(plan, stage, N_LAYERS)
     inputs = plan["inputs"]
     phase1 = {i: {"input_id": i, "n_images": inputs[i]["case"]["n_images"], "seconds": 0.3,
                   **baseline_result(inputs[i])} for i in work["phase1"]}
+    for i in changed:
+        phase1[i] = flipped(phase1[i])
     batches = {}
     for batch in work["batches"]:
         none = {k: phase1[batch["recipient"]][k] for k in ("answer", "raw", "first_token", "margin", "margin_fp32",
                                                             "margin_bf16", "margin_bf16_variant")}
+        if batch["batch"] in changed_none:
+            none = flipped(none)
         rows = []
         shared = {layer: rng.random() for layer in range(N_LAYERS + 1)}
         for spec in batch["rows"]:
@@ -93,8 +111,8 @@ def tie(direction, donor, layer):
 
 # ---------------------------------------------------------------- 가짜 B
 
-def fake_b(plan, stage, effect, seed=11, allp_flip=0.0, noise=1.0):
-    """effect(population or kind, query, target, band) → Δm 평균."""
+def fake_b(plan, stage, effect, seed=11, allp_flip=0.0, noise=1.0, changed=()):
+    """effect(population or kind, query, target, band) → Δm 평균. changed: 무개입 행 답이 기준과 달라진 항목."""
     rng = random.Random(seed)
     work = b_work(plan, stage)
     inputs = plan["inputs"]
@@ -102,6 +120,8 @@ def fake_b(plan, stage, effect, seed=11, allp_flip=0.0, noise=1.0):
     for batch in work["batches"]:
         item = work["items"][batch["item_id"]]
         none = baseline_result(inputs[batch["input_id"]])
+        if batch["item_id"] in changed:
+            none = flipped(none)
         rows = [{**batch["rows"][0], **none}]
         for spec in batch["rows"][1:]:
             if spec["kind"] == "zero":
@@ -186,15 +206,38 @@ def eval_test():
             f"A tie not resolved to the earliest layer: {report['selection']}")
     outcomes["A_tie_layer"] = report["selection"]["restore"]["layer"]
 
-    bad = copy.deepcopy(fake_a(plan, "main", null))
-    flipped = 0
-    for i, row in enumerate(bad["phase1"].values()):
-        if i % 33 == 0:
-            row["answer"] = "No" if row["answer"] == "Yes" else "Yes"
-            flipped += 1
+    inputs = plan["inputs"]
+    ids = sorted(fake_a(plan, "main", null)["phase1"])
+    far = [i for i in ids if not near_tie(inputs[i])]
+    bad = fake_a(plan, "main", null, changed=far[::33])
     checks = check_a("main", plan, bad, verification, N_LAYERS)
-    require(not checks["reproduction_no_intervention"]["passed"], "3% answer mismatch was not caught")
-    outcomes["A_reproduction_mismatch_caught"] = checks["reproduction_no_intervention"]["detail"]["answer_agreement"]
+    detail = checks["reproduction_no_intervention"]["detail"]
+    require(not checks["reproduction_no_intervention"]["passed"], "3% answer mismatch outside near-ties was not caught")
+    outcomes["A_reproduction_mismatch_caught"] = round(detail["answer_agreement_outside_near_tie"], 4)
+    ties = [i for i in ids if near_tie(inputs[i])]
+    tie_run = fake_a(plan, "main", null, changed=ties)
+    checks = check_a("main", plan, tie_run, verification, N_LAYERS)
+    detail = checks["reproduction_no_intervention"]["detail"]
+    require(checks["reproduction_no_intervention"]["passed"] and detail["answer_agreement_all_reported"] < 0.99,
+            "Near-tie-only flips should pass the v2 answer rule and show below 99% in the all-pair reference value")
+    outcomes["A_near_tie_flips_pass"] = {"near_tie_inputs": len(ties),
+                                         "all_pairs_reference": round(detail["answer_agreement_all_reported"], 4),
+                                         "outside_near_tie": detail["answer_agreement_outside_near_tie"]}
+
+    confirmation = [u for u in plan["a_units"] if u["half"] == "confirmation"]
+    changed = [u["false_yes_input"] for u in confirmation[:6]] + [confirmation[6]["correct_no_input"]]
+    changed_none = {f"{confirmation[10]['unit_id']}::restore", f"{confirmation[11]['unit_id']}::contaminate"}
+    run = fake_a(plan, "main", planted, changed=changed, changed_none=changed_none)
+    report = analyze_a(plan, run, preregistration_a, N_LAYERS)
+    rows = {r["hypothesis"]: r for r in report["primary"]}
+    require(all(r["label"] in SUPPORT for r in rows.values()), "Planted effect lost after exclusions")
+    require(rows["A-H1"]["excluded"]["changed_pair"] >= 6 and rows["A-H1"]["excluded"]["changed_none_row"] >= 1
+            and rows["A-H2"]["excluded"]["changed_none_row"] >= 1 and set(changed) <= set(report["changed_inputs"]),
+            f"Exclusions not applied: {rows['A-H1']['excluded']} {rows['A-H2']['excluded']}")
+    sensitivity = [r for r in report["secondary"] if r["analysis"].startswith("sensitivity: including")]
+    require(all(s["n"] > rows[h]["n"] for s, h in zip(sensitivity, ("A-H1", "A-H2"))),
+            "Sensitivity analysis including changed units is missing")
+    outcomes["A_exclusions"] = {h: r["excluded"] for h, r in rows.items()}
 
     run = fake_b(plan, "main", b_null)
     checks = check_b("main", plan, run, verification)
@@ -204,9 +247,14 @@ def eval_test():
     require(not any(row["label"] in SUPPORT for row in report["primary"]), "B null scenario produced support")
     outcomes["B_null"] = {r["hypothesis"]: r["label"] for r in report["primary"]}
 
-    run = fake_b(plan, "main", b_planted, allp_flip=0.10)
+    changed_items = [i["item_id"] for i in plan["b_items"] if i["half"] == "confirmation"][:40:4]
+    run = fake_b(plan, "main", b_planted, allp_flip=0.10, changed=changed_items)
     report = analyze_b(plan, run, preregistration_b)
     rows = {r["hypothesis"]: r for r in report["primary"]}
+    excluded = sum(r["excluded_changed_no_intervention_answer"] for r in rows.values())
+    expected = sum(1 for i in plan["b_items"] if i["item_id"] in set(changed_items) and i["population"] != "all_positive")
+    require(expected > 0 and excluded == expected, f"B exclusions not applied: {excluded} vs {expected}")
+    outcomes["B_exclusions"] = {k: v["excluded_changed_no_intervention_answer"] for k, v in rows.items()}
     require(rows["B-H1"]["label"] in SUPPORT and rows["B-H1"]["band"] == [25, 28], f"B-H1 planted: {rows['B-H1']}")
     require(rows["B-H2"]["label"] in SUPPORT and rows["B-H2"]["band"] == [17, 20], f"B-H2 planted: {rows['B-H2']}")
     require(report["warnings"], "All-P flips above 5% were not flagged")
