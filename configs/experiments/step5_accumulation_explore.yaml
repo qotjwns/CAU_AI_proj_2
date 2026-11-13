@@ -1,0 +1,13 @@
+# STEP 5-2 탐색 분석 (CPU, exploratory, 판정과 무관). 5-2 저장값·평가 출력·고정 Probe·모델 가중치만 읽는다.
+accumulation_config: configs/experiments/step5_accumulation.yaml   # 5-2 경로 (고정 대상, 읽기만)
+evaluation_dir: results/step5/qwen2_5_vl_3b/accumulation/evaluation
+step4_run_dir: results/step4/qwen2_5_vl_3b/extraction
+coco_annotations: data/raw/coco_rem/instances_valrem.json
+model_dir: cache/models/Qwen/Qwen2.5-VL-3B-Instruct                # 임베딩 행만 읽음 (Yes - No 방향)
+output_dir: reports/step5/qwen2_5_vl_3b/accumulation/exploratory
+probe_layer: 36                                                     # Probe AND·영향력·위치 정확도 레이어
+control_layers: [18, 27, 36]                                        # N 대조군(P 이미지) 표기 레이어
+statistics:                                                         # 95% 백분위, N 이미지·클래스 군집 (5-2와 같은 반복·seed)
+  reps: 1000
+  seed: 42
+precision_level: 0.975                                              # 5-2b 예상 CI 반폭 (Bonferroni 97.5%)

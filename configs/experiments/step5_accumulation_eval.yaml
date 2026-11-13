@@ -1,0 +1,12 @@
+# STEP 5-2 평가 (CPU). 판정에 쓰는 값(가설·결과 변수·최소 효과·판정 규칙·통계)은 모두 고정 manifest
+# (accumulation 설정의 frozen_dir, v2)에서 읽는다. 이 파일에는 경로와 탐색 분석 범위만 둔다.
+# 고정 대상인 step5_accumulation.yaml은 수정하지 않는다 (해시 불일치 시 평가 거부).
+accumulation_config: configs/experiments/step5_accumulation.yaml
+output_dir: results/step5/qwen2_5_vl_3b/accumulation/evaluation
+report_dir: reports/step5/qwen2_5_vl_3b/accumulation
+
+exploratory:
+  per_class: true            # 클래스별 P4 - P1 (False-Yes, 주 margin)
+  z_n: true                  # N 이미지의 고정 z_i 점수 변화 (N-first, N-last; 모든 레이어, 기준 = 같은 계열 2장 입력)
+  h_q: true                  # N이 위치 1~3에 있는 one-N 입력의 h_q readout 점수 (STEP 4 고정 readout, 분포 밖)
+  # z_N·h_q 레이어와 h_q 범위는 STEP 4 고정 manifest의 사전 지정(z_i L36, h_q L27 pooled)을 주 표기로 쓴다.

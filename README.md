@@ -10,12 +10,15 @@ Qwen2.5-VL-3B에 이미지 3장과 "객체가 세 이미지 모두에 있는가?
 - **데이터:** COCO val2017 + COCO-REM 주석, 20개 클래스. P = 대상 객체 bbox가 이미지 면적의 5% 이상(crowd 제외), N = 대상 클래스 주석 없음.
   - STEP 1~3: 클래스당 P 8장·N 8장(원본 이미지 310장), 레코드 2,800 → 고유 입력 2,332 (분모 기준)
   - STEP 4: STEP 1~3 이미지를 전부 제외한 새 이미지 960장(클래스당 P 24·N 24), 레코드 2,080 → 고유 입력 1,920
+  - STEP 5-2: STEP 4 이미지 재사용. N 480장 × (High / Low P 계열) × 16 입력 = 레코드 15,360 (고유 입력 14,349)
 - **분할:** STEP 3은 전역 image_id 4-Fold OOF(학습 벡터의 prefix에도 평가 이미지 제외). STEP 4는 STEP 3 전체로 학습한 Probe를 고정해 새 이미지에 적용.
 - **주 지표 (STEP 4 사전 지정, `configs/experiments/step4.yaml`)**
   - H1-A: z_i L36 Strict Discrepancy = 세 이미지 모두 맞힌 False-Yes / VLM False-Yes
   - H1-B: h_q L27 통합 readout의 N 위치 정확도 = N 위치를 맞힌 입력 / PPN·PNP·NPP 입력 (우연 1/3)
   - 비교: False-Yes vs Correct-No(클래스·구성 맞춤, 같은 N 이미지), 같은 입력에서 z_i vs h_q
   - 부가: Probe AND 정확도, PPP 유지율 / 통계: 원본 image_id 클러스터 부트스트랩 95% CI (1,000회)
+- **주 지표 (STEP 5-2 사전 지정, `frozen/v2`)**: one-N 입력의 False-Yes 비율 P4 − P1 (같은 계열 안 짝, 배치별 판정),
+  공동 주 결과 fp32 변형 margin. N 이미지 군집 부트스트랩, 견고성 표기는 클래스 군집 부트스트랩
 - **한계**
   - STEP 3은 클래스당 원본 이미지 16장 기반의 탐색적 결과이며, CI가 넓고 클래스 편차가 큼
   - STEP 4도 클래스당 24P+24N의 최소 파일럿 규모라 클래스별 검정력은 보장하지 않음
@@ -127,15 +130,67 @@ python -m experiments.step4_independent.visualize --analysis-json results/step4/
 - H1-A → `strict_discrepancy.csv`, `group_comparison.csv` / H1-B → `localization.csv` / 같은 입력 비교 → `zi_vs_hq.csv`
 - 고정 이력: `frozen/v*/manifest.json` (버전, 이유, 이전 버전 해시), 적용 전후 확인: `frozen_verification.json`
 
-## STEP 5. 사전 진단과 개입
+## STEP 5. 증거 집계 진단과 개입
+
+### 5-0. 사전 진단 (CPU)
 
 ```bash
-# h_q Probe 진단 (STEP 3 데이터, STEP 3 이후 언제든) → results/step5_diagnostics/qwen2_5_vl_3b/hq_probe/
-# 위치별 P/N 판별(z_i vs h_q), N 위치 정확도, pure(완전 미관측) 입력 분리
+# h_q Probe 진단 (STEP 3 데이터) → results/step5_diagnostics/qwen2_5_vl_3b/hq_probe/
 python -m experiments.step5_diagnostics.hq_probe
+# z_i 문맥 효과 vs bf16 수치 잡음 (STEP 2 데이터) → .../context_noise/
+python -m experiments.step5_diagnostics.context_noise
 ```
 
-- 개입 실험(readout–logit 관계, Hidden State 개입)은 STEP 4 이후 진행
+### 5-1. P 증거와 margin의 관계 (CPU, exploratory, STEP 4 출력 사용)
+
+```bash
+# one-N 입력에서 z_P가 z_N 외에 Yes−No margin을 설명하는가 → .../evidence_margin/
+python -m experiments.step5_diagnostics.evidence_margin
+# 보완 분석 A1~A7 (보정·집계 규칙·3분위·STEP 3 재현) → .../evidence_followup/
+python -m experiments.step5_diagnostics.evidence_followup
+```
+
+### 5-2. P 누적 실험 (confirmatory)
+
+같은 N 이미지에 P를 1~4장 붙였을 때(N-first / N-last, High / Low 계열) False-Yes와 margin이 늘어나는지 봅니다.
+사전 등록은 `configs/experiments/step5_accumulation.yaml` → `frozen/v2`. 고정 후에는 이 설정·케이스·추출 코드를 바꾸지 않습니다.
+
+```bash
+# 케이스 (STEP 4 이미지만, N 480 × High/Low × 16 = 15,360) + 일관성 검사 + 비전 fp32 부분집합
+python -m scripts.build_step5_cases
+python -m scripts.check_step5_cases
+python -m scripts.build_step5_vision_subset
+# 사전 등록 고정 (본 추출 전, 덮어쓰기 금지)
+python -m experiments.step5_accumulation.freeze
+
+# [GPU] 파일럿 64건 → 무결성 검사 (평가 지표 없음)
+python -m experiments.step2_hidden_states.run --config configs/experiments/step5_accumulation_extract.yaml \
+  --limit 64 --verify-repeat --verify-reference --output-dir results/step5/qwen2_5_vl_3b/accumulation/pilot
+python -m experiments.step5_accumulation.check_pilot
+# [GPU] 본 추출 → 무결성 검사 (main_check.json)
+python -m experiments.step2_hidden_states.run --config configs/experiments/step5_accumulation_extract.yaml
+python -m experiments.step5_accumulation.validate
+# [GPU] 민감도: 비전 인코더 fp32 부분집합 (1,920건)
+python -m experiments.step2_hidden_states.run --config configs/experiments/step5_accumulation_extract_vision_fp32.yaml
+
+# 평가 (CPU). 먼저 구조만 확인 (지표 계산 안 함)
+python -m experiments.step5_accumulation.evaluate --check-only
+# 본 평가는 한 번만: 결과가 있으면 거부, 재실행은 --rerun-reason '이유' (rerun_log.json에 기록)
+python -m experiments.step5_accumulation.evaluate
+python -m experiments.step5_accumulation.visualize
+```
+
+- 판정 → `evaluation/primary.csv`, `analysis.json`의 `decision` (배치별 P4−P1, 최소 효과 False-Yes 0.05 / margin 0.25)
+- 대조군·H2·차이의 차이 → `contrasts.csv`, `levels.csv` / 민감도 → `sensitivity.csv`, `vision_fp32.csv`
+- 탐색(클래스별, z_N·h_q 변화) → `exploratory_*.csv`. 평가 설정은 `step5_accumulation_eval.yaml` (경로·탐색 범위만)
+
+```bash
+# 사후 탐색 (판정과 무관): a에 따른 z_N 변화와 P 대조군, 장수별 N 영향력·Probe AND·Yes 격차, 배치 상호작용,
+# 5-2b 예상 CI 반폭, h_q readout 기하(직교 투영 사전 점검), bbox → reports/step5/qwen2_5_vl_3b/accumulation/exploratory/
+python -m experiments.step5_accumulation.explore
+```
+
+- 해석 단서: All-P의 Probe AND는 Probe 양성 P만 고른 설계에 따른 값. H2(High − Low)와 z_P 결과는 물체 크기·현저성과 구분되지 않음
 
 ## 결과 위치
 
@@ -145,6 +200,8 @@ python -m experiments.step5_diagnostics.hq_probe
 | STEP 2 | `results/step2/qwen2_5_vl_3b/` | `reports/step2/qwen2_5_vl_3b/` |
 | STEP 3 | `results/step3/qwen2_5_vl_3b/` | `reports/step3/qwen2_5_vl_3b/` |
 | STEP 4 | `results/step4/qwen2_5_vl_3b/` (`frozen/`, `pilot/`, `extraction/` 포함) | `reports/step4/qwen2_5_vl_3b/` |
-| STEP 5 진단 | `results/step5_diagnostics/qwen2_5_vl_3b/` | `reports/step5_diagnostics/qwen2_5_vl_3b/` |
+| STEP 5 진단 (5-0, 5-1) | `results/step5_diagnostics/qwen2_5_vl_3b/` | `reports/step5_diagnostics/qwen2_5_vl_3b/` |
+| STEP 5-2 | `results/step5/qwen2_5_vl_3b/accumulation/` (`frozen/`, `pilot/`, `extraction/`, `extraction_vision_fp32/`, `evaluation/`) | `reports/step5/qwen2_5_vl_3b/accumulation/` |
 
 설정 파일은 `configs/` (데이터 `data/`, 모델 `models/`, 단계별 `experiments/`)에 있습니다.
+`data/`·`results/`·`reports/`는 git에 없으며, 서버 백업 tar 복원 방법은 `BACKUP_README.md`에 있습니다.
