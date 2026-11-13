@@ -1,0 +1,3 @@
+﻿variant,hypothesis,statement,contrast,outcome,level,n_series,excluded_series,n_anchors,estimate,ci_low,ci_high,class_ci_low,class_ci_high,minimum_effect,label
+sign_consistent,H1b,N-last advantage: mean False-Yes over middle positions minus False-Yes at the last position > 0,middle mean - last position,false_yes_rate,0.975,730,230,447,0.1063165905631659,0.08843661673202219,0.12336545820293127,0.07114873778564088,0.15122190803716098,0.05,robust support
+sign_consistent,H2b,Middle-position effect: mean False-Yes over middle positions minus False-Yes at the first position > 0,middle mean - first position,false_yes_rate,0.975,730,230,457,0.03097412480974125,0.017823783647143994,0.046889852384695424,0.0034550865056805196,0.05714732308943895,0.05,no meaningful difference

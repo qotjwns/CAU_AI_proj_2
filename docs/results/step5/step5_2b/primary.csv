@@ -1,0 +1,3 @@
+﻿hypothesis,statement,contrast,outcome,level,n_series,excluded_series,n_anchors,estimate,ci_low,ci_high,class_ci_low,class_ci_high,minimum_effect,label
+H1b,N-last advantage: mean False-Yes over middle positions minus False-Yes at the last position > 0,middle mean - last position,false_yes_rate,0.975,960,0,480,0.14172453703703702,0.12456524884259258,0.1601584201388889,0.1052025462962963,0.18743272569444447,0.05,robust support
+H2b,Middle-position effect: mean False-Yes over middle positions minus False-Yes at the first position > 0,middle mean - first position,false_yes_rate,0.975,960,0,480,0.0396412037037037,0.024532696759259263,0.05683015046296296,0.00036964699074074623,0.0744509548611111,0.05,inconclusive

@@ -1,0 +1,184 @@
+{
+  "status": "frozen",
+  "version": "v2",
+  "created_at": "2026-11-12T15:05:24+00:00",
+  "note": "Frozen before the main STEP 5-2 extraction. The evaluation must use this preregistration; a change requires a new version with a recorded reason.",
+  "revision": {
+    "version": "v2",
+    "previous_version": "v1",
+    "made_before_main_extraction": true,
+    "reason": "The v1 integrity check required the N image's features in N-first inputs to match across image counts within atol/rtol 1e-5. The pilot (64 records, no evaluation metric computed) showed differences up to 1.28 (absolute). Diagnosis: the bf16 vision encoder gives slightly different embeddings for the same image depending on the other images processed with it (relative L2 0.4-7%); with the vision encoder in float32 the difference is 4e-7 to 1e-5, so this is numerical error, not information flowing between images. In LLM features the gap was cosine distance <= 3.4e-4 and relative L2 <= 2.6%; frozen z_i probe p(P) changed by <= 0.04. The same effect exists in STEP 1-4 (STEP 3/4 merge context vectors within cosine distance 0.001).",
+    "changes": [
+      "Integrity criterion for N-first identity: cosine distance <= 0.001 at every layer (was atol/rtol 1e-5).",
+      "Inputs above the criterion are listed and a sensitivity analysis excluding them is added.",
+      "Reported with the criterion: relative L2 and frozen z_i probe p(P) changes; exploratory: signed mean z_N change by image count in N-first.",
+      "New sensitivity analysis: vision encoder in float32 on a seeded subset, comparing P4 - P1.",
+      "Interpretation wording: N's representation in N-first is identical within bf16 numerical error (bound stated).",
+      "Run metadata records the language-model dtype and the vision dtype; model loading gains an optional float32 vision encoder (default unchanged)."
+    ],
+    "unchanged": "hypotheses, cases, outcomes, minimum effects, decision rules, statistics",
+    "pilot_policy": "As in STEP 4, the pilot (results/step5/.../accumulation/pilot, 64 records, run under v1) is an integrity check only and is not part of any analysis. The main extraction re-runs every frozen case, including the 64 pilot cases, and only the full main run is evaluated."
+  },
+  "previous_versions": [
+    {
+      "frozen_dir": "results/step5/qwen2_5_vl_3b/accumulation/frozen/v1",
+      "manifest_sha256": "da8273aa9cf6b158da963221e4c319d810f130a1e6052e8ee1453131b32e01a1"
+    }
+  ],
+  "preregistration": {
+    "decided_before_step5_2_data": true,
+    "hypotheses": {
+      "H0": "Minimum / Product-AND over fixed per-image evidence: adding P images to an input that keeps the same N image does not increase the Yes margin or the False-Yes rate.",
+      "H1": "Positive Evidence Accumulation: adding P images increases the Yes margin and the False-Yes rate.",
+      "H2": "Secondary: for the same N image, placement and image count, the High-P series gives a higher False-Yes rate and margin than the Low-P series (same image counts, different evidence strength).",
+      "caveat": "H0's prediction assumes that the evidence of the existing images and the decision criterion stay fixed. An increase is reported as a disagreement with fixed-evidence AND models, not as a rejection of every AND computation."
+    },
+    "unit": "N image (anchor). Each N image has one High and one Low series of five P images; analyses pair inputs within a series.",
+    "definitions": {
+      "answer_parsing": "Greedy generation, max_new_tokens 8. The decoded response is stripped of surrounding whitespace, then of trailing '.', '!', '?', stripped again and case-folded; 'yes' -> Yes, 'no' -> No, anything else -> unparsed.",
+      "false_yes": "ground truth No (one-N input) and parsed answer Yes; unparsed answers are not Yes and are counted separately",
+      "yes_rate_all_positive": "share of All-P inputs whose parsed answer is Yes (unparsed counted as not Yes)",
+      "margin_primary": "fp32 variant margin: logsumexp over the answer-variant token logits for Yes minus that for No, with logits computed in float64 arithmetic from the bf16 final-layer (after norm) last-input-token state and the bf16 output-embedding rows. Variant token sets are the single tokens that equal yes / no after stripping whitespace and case-folding; the exact lists are recorded in run.json. Field: fp32_variant_logit_margin.",
+      "margin_sensitivity": "bf16 generation logits of the capitalized 'Yes' and 'No' tokens (STEP 1-4 definition). Field: logit_margin."
+    },
+    "primary": {
+      "outcome": "False-Yes rate on one-N inputs",
+      "contrast": "P = 4 minus P = 1 within the same series (same N image, same strength, same placement), averaged over series",
+      "by_placement": [
+        "N-first",
+        "N-last"
+      ],
+      "trend": "secondary: least-squares slope of the False-Yes rate over P = 1..4"
+    },
+    "co_primary_margin": {
+      "outcome": "primary margin (fp32 variant) on one-N inputs",
+      "contrast": "P = 4 minus P = 1 within series, by placement"
+    },
+    "minimum_effect": {
+      "confirmed": true,
+      "confirmed_by": "user, before any STEP 5-2 model output",
+      "false_yes_rate": 0.05,
+      "margin": 0.25,
+      "rationale": "STEP 5-1 (exploratory): top vs bottom tercile of mean P evidence differed by +0.156 in False-Yes rate and +0.59 in margin; +1 SD of P evidence went with +0.31 margin. The STEP 4 one-N False-Yes rate was 0.274. 0.05 is about one third of the tercile contrast and 18% of the baseline rate; 0.25 logit is two bf16 margin steps (0.125), 0.22 SD of the STEP 4 margin and close to the +1 SD association. 5-1 measured mean P evidence, 5-2 varies the number of P images, so these are practical lower bounds rather than predictions."
+    },
+    "decision": {
+      "per_placement_supported": "point estimate >= minimum effect AND N-image cluster bootstrap 95% CI lower bound > 0",
+      "robust_label": "A supported placement is labelled 'robust support' only if the class-level cluster bootstrap 95% CI lower bound is also > 0; otherwise 'support (cross-class generalization uncertain)'.",
+      "per_placement_no_meaningful_increase": "N-image cluster bootstrap 95% CI upper bound < minimum effect",
+      "otherwise": "inconclusive for that placement",
+      "H1_supported": "False-Yes rule met in both N-first and N-last (the margin is reported with the same rule as co-primary)",
+      "one_placement_only": "Report placement-specific alternatives with the exploratory results: N-first = distance between N and the question grows; N-last = the N representation can change with preceding P images.",
+      "no_increase": "Do not extend the STEP 5-1 association to a causal aggregation effect."
+    },
+    "control": {
+      "all_positive": "Yes rate and margin of All-P inputs with the same image count and placement (N slot filled with the next series image), reported next to the one-N False-Yes rate.",
+      "difference_in_differences": "Secondary, not part of the decision: (one-N primary-margin change P4 - P1) - (All-P primary-margin change between the same image counts, 2 -> 5 images), within series and placement."
+    },
+    "secondary": {
+      "H2_high_minus_low": "Paired High - Low within the same N image, placement and image count, for the False-Yes rate and the primary margin. Reported for each image count (2-5) and pooled (mean over counts), by placement, with N-image cluster CIs. Also reported: whether High - Low grows with the P count (slope over P = 1..4).",
+      "trend": "least-squares slope over P = 1..4 for the False-Yes rate and the primary margin",
+      "margin_sensitivity": "all primary and H2 contrasts repeated with the bf16 'Yes'/'No' margin",
+      "sign_consistency": "contrasts repeated without inputs whose bf16 margin sign disagrees with the answer (ties included)",
+      "integrity_exclusion": "contrasts repeated without the N-first inputs whose N features exceed cosine distance 0.001 against the series' two-image input (listed in n_first_exceeding_inputs.json), together with the paired inputs they belong to",
+      "vision_fp32": "Seeded subset: 6 N images per class (120 N images, 240 series), all one-N inputs (P = 1..4, both placements, both strengths; 1,920 records), re-run with the vision encoder in float32 (language model unchanged, bf16). Compared with the main bf16 run on the same series: direction and size of P4 - P1 for the False-Yes rate and the primary margin, and their paired difference with N-image cluster CIs. Selection never uses outcomes."
+    },
+    "interpretation": {
+      "n_first_representation": "In N-first inputs the N image's representation is identical within bf16 numerical error: cosine distance <= 0.001 at every layer against the same series' two-image input (pilot: <= 3.4e-4, relative L2 <= 2.6%, |delta p(P)| <= 0.04); the full-run range is reported with the results."
+    },
+    "model_predictions": {
+      "note": "Qualitative predictions written before the data. P effect = one-N change P4 - P1; DiD as defined above.",
+      "rows": [
+        {
+          "model": "AND over fixed per-image evidence (Minimum / Product)",
+          "P_effect": "none",
+          "high_minus_low": "none",
+          "did": "n/a"
+        },
+        {
+          "model": "Sum of P evidence",
+          "P_effect": "increase",
+          "high_minus_low": "present and grows with the P count",
+          "did": "about 0"
+        },
+        {
+          "model": "Mean over all images (N share diluted)",
+          "P_effect": "increase",
+          "high_minus_low": "present",
+          "did": "positive"
+        },
+        {
+          "model": "Mean of P evidence only",
+          "P_effect": "none",
+          "high_minus_low": "present",
+          "did": "n/a"
+        },
+        {
+          "model": "General Yes tendency with image count",
+          "P_effect": "increase",
+          "high_minus_low": "none",
+          "did": "n/a"
+        }
+      ]
+    },
+    "exploratory": [
+      "Per-class P effects (P4 - P1) for the False-Yes rate and the primary margin",
+      "N-first: signed mean change of the N image's frozen z_i probe score (logit and p(P), each layer) by image count, against the two-image input",
+      "N-last: change of z_N (frozen STEP 4 z_i probe, L36) with image count",
+      "h_q readouts only where the N image sits at positions 1-3 (readouts exist for positions 1-3 only; off-distribution)"
+    ],
+    "statistics": {
+      "method": "95% percentile cluster bootstrap",
+      "resampling_unit": "N image ID (anchor); all series and inputs of a drawn N image enter together",
+      "sensitivity": "class-level cluster bootstrap (P images are reused across N images only within a class); used for the robust label",
+      "reps": 1000,
+      "seed": 42
+    },
+    "integrity_checks": [
+      "Token count of each image identical across all inputs that contain it",
+      "N-first: the N image's features identical across image counts within bf16 numerical error (cosine distance <= 0.001 at every layer), since it sees no later image",
+      "Agreement rate between margin sign and generated answer (bf16 and primary margin)"
+    ]
+  },
+  "integrity": {
+    "n_first_max_cosine_distance": 0.001
+  },
+  "files_sha256": {
+    "data/step5_accumulation/step5_seed52_cases.jsonl": "f73796d62f158ca6f63ea82d0048ff52b918cf4a70158f4a44bcdcddab74fb74",
+    "data/step5_accumulation/step5_seed52_consistency_check.json": "026e8e5e35b27f9760362be17e0d6b418263893804552a4e8823c88c36b05efa",
+    "data/step5_accumulation/step5_seed52_design.json": "6ed0f2d14ab2ed6e0e86363db71c8df5a8f8297f36aec57950459caa5481334e",
+    "data/step5_accumulation/used_images_step1_5.json": "8dfc8de82ebb182ea40d6825b34e2771f781024bcec332a2cec62cb8ca779fb8",
+    "configs/data/step5_accumulation.yaml": "348d6ff415ea9cc010f3f6a896145ad228238a08f71d9f6325e2ed1fb9181b6d",
+    "configs/experiments/step5_accumulation_extract.yaml": "1c6aad609c54467347bee8e0989b9d0ece5ba3544b7e81bc42b5eea7274e92ab",
+    "data/step5_accumulation/step5_seed52_vision_fp32_subset.jsonl": "f4c898bb6b1510fe8a3195738cad88aab0d31c93f6bedd0e06c7bd660dbf5e7a",
+    "configs/experiments/step5_accumulation_extract_vision_fp32.yaml": "89744c1f2373cdd57c5beb769c6b84b03f6c228a49d70b8fab48c04f15ee45c3",
+    "configs/experiments/step5_accumulation.yaml": "6cf5e4641145f535d78283664a868214a0c0f6129d04e6c93b4d0d8cd575e8f0",
+    "src/data_manipulate/build_accumulation.py": "c176dc50328ec1cecb9e7c42781d717dc9c3c33ac6fd65d631acf8bea8360fe6",
+    "src/data_manipulate/check_accumulation.py": "79a47219815deca142183026ee92f063521e8f9b5771b716e1a9f97345a923fe",
+    "src/core/features.py": "83a327b164f91669501f0884de76e0a891dc0012e23d06480ed8415b2d2ec000",
+    "src/core/inference.py": "d869077e3043ccaa46bce91308f72fa6cb32bff7a92542b36225d46d04b89fb2",
+    "src/core/prompts.py": "828bd34bff2e6b6e2184a1e5395b8a8ae5bfaecbd2a628c10a6db3d40a8f6a39",
+    "src/core/model.py": "0e59ad96cbb752a252f86ac8a53244307be2bb357bce88a9a0773814ed0f85aa",
+    "src/core/feature_validation.py": "c774a4eddfd133c19698d3df0c1d821f9dbded3a4e7fdc1c248931e6081d656d",
+    "src/core/accumulation_check.py": "e41df0f5dde21d4d8b6be72e531f54eb7d7d9bd0bf8f8a5c99708e4b61469e4b",
+    "src/core/accumulation_freeze.py": "7b032b4f8a45eb0e08f9b069082e72659bf8fe4d34800b4be4e153c10e478df1",
+    "experiments/step2_hidden_states/run.py": "4d42c98b7fd719ed4f426b7110504d9bc7f79cb40f24b724260ce27c77ba4751",
+    "results/step4/qwen2_5_vl_3b/frozen/v1/manifest.json": "fd3f19205218420d5acd0b2325a986e2d3333b42a221f5040020503d1599c6be"
+  },
+  "counts": {
+    "records": 15360,
+    "unique_inputs": 14349,
+    "negatives": 480,
+    "series": 960
+  },
+  "zi_frozen": {
+    "dir": "results/step4/qwen2_5_vl_3b/frozen/v1",
+    "version": "v1"
+  },
+  "pilot": {
+    "dir": "results/step5/qwen2_5_vl_3b/accumulation/pilot",
+    "limit": 64,
+    "existed_at_freeze": true,
+    "run_json_sha256": "df15e50e50b345b310e8a1a39ce3231e22f716fad5fbcb18126b8c335d58f200",
+    "policy": "As in STEP 4, the pilot (results/step5/.../accumulation/pilot, 64 records, run under v1) is an integrity check only and is not part of any analysis. The main extraction re-runs every frozen case, including the 64 pilot cases, and only the full main run is evaluated."
+  }
+}

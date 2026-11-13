@@ -1,0 +1,11 @@
+# STEP 5-2b 평가 (CPU). 판정에 쓰는 값(가설·대비·최소 효과·판정 규칙·통계)은 모두 고정 manifest(position/frozen/v1)에서
+# 읽는다. 이 파일에는 경로와 탐색 분석 범위만 둔다. 고정 대상인 step5_position.yaml은 수정하지 않는다.
+position_config: configs/experiments/step5_position.yaml
+output_dir: results/step5/qwen2_5_vl_3b/position/evaluation
+report_dir: reports/step5/qwen2_5_vl_3b/position
+
+exploratory:
+  features: true             # z_N·Probe·h_q 특징 기반 탐색 (특징 파일 읽음)
+  relation_layer: 36         # 계열 안 z_N 변화 − margin 변화 관계의 주 표기 레이어 (STEP 4 z_i 사전 지정 L36)
+  hq_scope: pooled           # 3장 입력 h_q readout 주 표기 (STEP 4 사전 지정: L27 pooled)
+  hq_layer: 27

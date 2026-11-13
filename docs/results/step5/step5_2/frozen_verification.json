@@ -1,0 +1,7 @@
+{
+  "frozen_dir": "results/step5/qwen2_5_vl_3b/accumulation/frozen/v2",
+  "zi_frozen_dir": "results/step4/qwen2_5_vl_3b/frozen/v1",
+  "verified_before": true,
+  "verified_after": true,
+  "changed_files": []
+}

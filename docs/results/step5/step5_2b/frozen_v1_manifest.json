@@ -1,0 +1,149 @@
+{
+  "status": "frozen",
+  "version": "v1",
+  "created_at": "2026-11-13T06:54:38+00:00",
+  "note": "Frozen before the STEP 5-2b pilot and main extraction. The evaluation must use this preregistration; a change requires a new version with a recorded reason.",
+  "revision": null,
+  "previous_versions": [],
+  "preregistration": {
+    "decided_before_step5_2b_data": true,
+    "scope": "Directly tested: sensitivity of the final answer to the order of the same images. Causes (image representation, attention, aggregation, final decision stage) are separated later by patching and intervention experiments. Position effects on new images are part of the 5-5 final-test preregistration, not a separate experiment.",
+    "observed_before": {
+      "note": "STEP 5-2 (preregistration v2, evaluated 2026-11-13) already observed the first-position (N-first) and last-position (N-last) False-Yes rates for 3-5 images on these same series (post-hoc same-image order gap, first minus last: +0.125, +0.090, +0.092 for 3, 4, 5 images). The confirmatory targets here are the new middle-position conditions. First and last positions are re-extracted in the 5-2b run and every confirmatory contrast uses values from that single run; STEP 5-2 values are used only for the cross-run report.",
+      "step4_three_image_rates": {
+        "NPP": 0.279,
+        "PNP": 0.356,
+        "PPN": 0.186
+      }
+    },
+    "design": {
+      "source": "STEP 5-2 series: 480 N images x High/Low strength, P order P1..P5 (no new images)",
+      "grid": "For P count k = 2, 3, 4 (3-5 images) and a = 0..k: P1..Pk in series order with N inserted after a P images (b = k - a P images after N). a = 0 is the first position, a = k the last, a = 1..k-1 the middle positions.",
+      "records": "11,520 = 960 series x (3 + 4 + 5); 5,760 middle (new) + 5,760 first/last (re-extracted)",
+      "representation_note": "Image tokens precede the question text, so the N image's representation z_N depends only on the images before it: inputs with the same a share z_N regardless of b (within bf16 numerical error)."
+    },
+    "hypotheses": {
+      "H1b": "N-last advantage: mean False-Yes over middle positions minus False-Yes at the last position > 0",
+      "H2b": "Middle-position effect: mean False-Yes over middle positions minus False-Yes at the first position > 0",
+      "note": "H1b and H2b are decided separately; neither changes the STEP 5-2 hypotheses or decisions."
+    },
+    "unit": "series (one N image x one strength); contrasts are paired within a series",
+    "definitions": {
+      "middle_mean": "3 images: position 2; 4 images: mean of positions 2-3; 5 images: mean of positions 2-4",
+      "contrast": "Per series and image count (3, 4, 5): middle_mean minus the end position (last for H1b, first for H2b). Primary estimate: equal-weight mean over the three image counts, then mean over series (High and Low equal weight).",
+      "answer_parsing": "as STEP 5-2 (greedy, max_new_tokens 8, strip, trailing punctuation removed, case-folded)",
+      "false_yes": "parsed answer Yes on a one-N input; unparsed answers are not Yes and are counted separately",
+      "margin_primary": "fp32_variant_logit_margin (as STEP 5-2)",
+      "margin_sensitivity": "logit_margin (bf16 'Yes' / 'No', as STEP 5-2)"
+    },
+    "primary": {
+      "outcome": "False-Yes rate (generated answer)",
+      "contrasts": [
+        "H1b",
+        "H2b"
+      ]
+    },
+    "minimum_effect": {
+      "confirmed": true,
+      "confirmed_by": "user, 2026-11-13, before any STEP 5-2b model output",
+      "false_yes_rate": 0.05,
+      "margin": null,
+      "rationale": "Same value as STEP 5-2. The same-image first-minus-last gap in 5-2 was +0.09 to +0.125 (post-hoc); a middle position that differs from an end by about half of that gap is the practical lower bound. Projected 97.5% CI half-width of the pooled contrast from 5-2 variance (proxy: within-series first minus last, equal weight over 3-5 images; conservative because the middle mean averages 1-3 positions): N-image cluster 0.021, class cluster 0.045 (per image count 0.028-0.033 and 0.048-0.058). fp32 margin proxy: 0.050 and 0.149."
+    },
+    "decision": {
+      "level": "97.5% intervals (Bonferroni for two primary hypotheses), N-image cluster bootstrap",
+      "per_hypothesis_supported": "point estimate >= 0.05 AND N-image cluster 97.5% CI lower bound > 0",
+      "robust_label": "'robust support' only if the class-level cluster bootstrap 97.5% CI lower bound is also > 0; otherwise 'support (cross-class generalization uncertain)'",
+      "no_meaningful_difference": "N-image cluster 97.5% CI upper bound < 0.05",
+      "otherwise": "inconclusive"
+    },
+    "statistics": {
+      "method": "percentile cluster bootstrap, 97.5% for H1b/H2b (95% for secondary and exploratory results, labelled)",
+      "resampling_unit": "N image ID; all series and inputs of a drawn N image enter together",
+      "sensitivity": "class-level cluster bootstrap (robust label)",
+      "reps": 1000,
+      "seed": 42
+    },
+    "secondary": {
+      "per_count": "H1b and H2b contrasts for 3, 4 and 5 images separately",
+      "margin": "the same contrasts with the fp32 variant margin (estimates and CIs only) and the bf16 margin",
+      "step4_comparison": "3 images: PNP minus NPP (part of H2b) reported next to STEP 4 (NPP 0.279, PNP 0.356, PPN 0.186) as a follow-up check on the same image pool, not an independent replication",
+      "cross_run": "5-2 vs 5-2b on the 5,760 identical first/last inputs: parsed-answer agreement, margin differences (both definitions) and z_N cosine distance, reported as run-to-run noise together with the recorded GPU, driver and library versions",
+      "sign_consistency": "contrasts repeated without inputs whose bf16 margin sign disagrees with the answer (ties included)"
+    },
+    "exploratory": {
+      "H3": "Relation of the False-Yes rate to a (P before N) and b (P after N). With a fixed, z_N is identical across b (prefix property), so effects of b arise after the image representation; effects of a are reported together with the representation change of z_N. Increasing a changes both the preceding image content and the absolute token position of N (rotary position), and this design does not separate the two.",
+      "representation": [
+        "z_N by a against a = 0 (same N image, no preceding image): cosine distance per layer with the bf16 baseline (5-2 N-first identity: median 5.6e-5, max 4.0e-4), frozen z_i probe raw logit and p(P)",
+        "within series: z_N probe-logit change vs margin change",
+        "h_q change; position readouts only for 3-image inputs (trained on 3 images), not for 4-5 images",
+        "z_i probe image-level accuracy at positions 4-5 (shift with input length)",
+        "STEP 5-2 N-last z_N by image count in the same format"
+      ]
+    },
+    "integrity_checks": [
+      "token count of each image identical across all inputs that contain it, and identical to STEP 4 / 5-2",
+      "within run: inputs with the same series and a share z_N (cosine distance <= 0.001 at every layer), including the re-extracted N-last input with k = a",
+      "across runs: middle z_N vs the STEP 5-2 N-last (k = a) z_N, and re-extracted first/last vs 5-2, with the same criterion; exceeding marks an environment difference (reported), it does not block evaluation because confirmatory contrasts are within the 5-2b run",
+      "margin sign agreement with the generated answer (both margins)",
+      "run.json records GPU type, driver, CUDA and library versions (experiments.step5_position.extract)"
+    ]
+  },
+  "integrity": {
+    "prefix_max_cosine_distance": 0.001
+  },
+  "files_sha256": {
+    "data/step5_position/step5b_position_cases.jsonl": "9d0f634b6a8c954087c3750307832099c7ca05268458e498e04315a7d5ac922b",
+    "data/step5_position/step5b_position_consistency_check.json": "45b5f3bc474ab086a8f862b502b0683c68f1bf8214147d29838713223fdff5e7",
+    "configs/data/step5_position.yaml": "4eaafebaed3127a3a06c06b49da55bc3c51218a8f0a83ac11e462c19de8acaf8",
+    "configs/experiments/step5_position_extract.yaml": "e0f47edb505eb21a65a8f320bdb5e61721286f02c9cb09865e8a3ef1f10ac955",
+    "configs/experiments/step5_position.yaml": "cd3fb0c78164319f1a68a32d48fdb1e171fcdc4db1bfba19aa9d5f223f60da3a",
+    "src/data_manipulate/build_position.py": "3c8780f8dd6f836462b4fbbbc57b4dd8b7cb35a75ec1567cbedf2359271789dd",
+    "src/data_manipulate/check_position.py": "ab623dd059f50a98ece575741788dbffc9134c6524d060a69ec7ecd9e25a1923",
+    "experiments/step5_position/extract.py": "34624bfe05fab015d396797bef18ace1c00c2988c7332fc883d556d7f8bf3bed",
+    "src/common/environment.py": "44366b714e9625337bcababe69f1028bc14e38cf15c3b36d5c7a0c1e042a8b2b",
+    "src/core/position_check.py": "d1ea90b06549054ff3182c3efff0813190219afc812b70e7d951981473c05fe8",
+    "src/core/position_freeze.py": "223d2af813116e0ffc2e1d0995f70ffca29858f6838321f3ee157e1be6ae4a7d",
+    "experiments/step5_position/check_pilot.py": "58be6b0947953444cfa81e515003ad6e7f37826c94c00b122a2efc2341e1c109",
+    "src/core/accumulation_check.py": "e41df0f5dde21d4d8b6be72e531f54eb7d7d9bd0bf8f8a5c99708e4b61469e4b",
+    "src/core/accumulation_freeze.py": "7b032b4f8a45eb0e08f9b069082e72659bf8fe4d34800b4be4e153c10e478df1",
+    "experiments/step2_hidden_states/run.py": "4d42c98b7fd719ed4f426b7110504d9bc7f79cb40f24b724260ce27c77ba4751",
+    "src/core/features.py": "83a327b164f91669501f0884de76e0a891dc0012e23d06480ed8415b2d2ec000",
+    "src/core/inference.py": "d869077e3043ccaa46bce91308f72fa6cb32bff7a92542b36225d46d04b89fb2",
+    "src/core/prompts.py": "828bd34bff2e6b6e2184a1e5395b8a8ae5bfaecbd2a628c10a6db3d40a8f6a39",
+    "src/core/model.py": "0e59ad96cbb752a252f86ac8a53244307be2bb357bce88a9a0773814ed0f85aa",
+    "src/core/feature_validation.py": "c774a4eddfd133c19698d3df0c1d821f9dbded3a4e7fdc1c248931e6081d656d",
+    "results/step4/qwen2_5_vl_3b/frozen/v1/manifest.json": "fd3f19205218420d5acd0b2325a986e2d3333b42a221f5040020503d1599c6be",
+    "results/step5/qwen2_5_vl_3b/accumulation/frozen/v2/manifest.json": "8b76d02ca609672bbcba0fe337c020dc6f716c5ae993dd288111ac39affae54b",
+    "results/step5/qwen2_5_vl_3b/accumulation/extraction/manifest.jsonl": "ddcf8790dd9c5f1b0a66b410ec4cdea94dd3a9f50280fb9fb1675f7f420415e2",
+    "results/step5/qwen2_5_vl_3b/accumulation/extraction/run.json": "7133d930ee4584ebec0ae611d7b0e515a5087f066c31eb3643de90d3784d111e",
+    "results/step5/qwen2_5_vl_3b/accumulation/extraction/main_check.json": "270fe131b8a8a9f82d78a62852f82d3001d9c7a5c8f9949d85f73bcf0e565a20",
+    "results/step5/qwen2_5_vl_3b/accumulation/evaluation/analysis.json": "2d745751e195874fec987a63ff7b028d87f10b575a39942b215c51b7d3b3df58"
+  },
+  "counts": {
+    "records": 11520,
+    "unique_inputs": 11520,
+    "series": 960,
+    "n_images_anchor": 480,
+    "by_role": {
+      "first": 2880,
+      "middle": 5760,
+      "last": 2880
+    }
+  },
+  "zi_frozen": {
+    "dir": "results/step4/qwen2_5_vl_3b/frozen/v1",
+    "version": "v1"
+  },
+  "accumulation": {
+    "frozen_dir": "results/step5/qwen2_5_vl_3b/accumulation/frozen/v2",
+    "version": "v2",
+    "observed_before": "STEP 5-2 (preregistration v2, evaluated 2026-11-13) already observed the first-position (N-first) and last-position (N-last) False-Yes rates for 3-5 images on these same series (post-hoc same-image order gap, first minus last: +0.125, +0.090, +0.092 for 3, 4, 5 images). The confirmatory targets here are the new middle-position conditions. First and last positions are re-extracted in the 5-2b run and every confirmatory contrast uses values from that single run; STEP 5-2 values are used only for the cross-run report."
+  },
+  "pilot": {
+    "dir": "results/step5/qwen2_5_vl_3b/position/pilot",
+    "limit": 48,
+    "existed_at_freeze": false,
+    "policy": "Integrity check only; not part of any analysis (as in STEP 4 and 5-2)."
+  }
+}

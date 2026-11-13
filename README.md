@@ -216,7 +216,25 @@ python -m experiments.step5_position.validate
 
 - prefix 동일성: 같은 계열·같은 a의 입력은 z_N이 같아야 함(코사인 거리 ≤ 0.001, 실패 시 평가 중단).
   5-2 실행과의 비교는 보고만 하고, 기준을 넘으면 실행 환경 차이로 표시
-- 평가 코드는 본 추출 후 사전 등록 그대로 작성
+
+```bash
+# 평가 (CPU). 먼저 구조만 확인 (지표 계산 안 함)
+python -m experiments.step5_position.evaluate --check-only
+# 본 평가는 한 번만: 결과가 있으면 거부, 재실행은 --rerun-reason '이유' (rerun_log.json에 기록)
+python -m experiments.step5_position.evaluate
+python -m experiments.step5_position.visualize
+```
+
+- 판정 → `position/evaluation/primary.csv`, `analysis.json`의 `decision` (H1b·H2b, 97.5% CI, 최소 효과 0.05)
+- 부가(95%, 판정 없음): 장수별 대비·margin → `secondary_contrasts.csv`, 3장 STEP 4 비교, 부호 불일치 제외, 5-2와 같은 입력의 실행 간 잡음
+- 탐색: 위치 격자, a·b 기울기, 위치별 N 영향력(5-2 All-P − 5-2b one-N, 실행 간 비교), z_N 변화, 3장 h_q, 위치별 Probe 정확도
+
+**결과 (완료, 2026-11-13, confirmatory)** — 요약·그림·검사 기록 보존본: `docs/results/step5/`
+- H1b(N-last advantage): **robust support**, +0.142 [+0.125, +0.160] (97.5%), 클래스 CI [+0.105, +0.187]
+- H2b(Middle-position effect): **inconclusive**, +0.040 [+0.025, +0.057], 클래스 CI [+0.000, +0.074] (추정값이 최소 효과 0.05 미만)
+- 요약: N이 마지막 자리일 때만 False-Yes가 뚜렷이 낮고, 나머지 자리는 비슷하다
+- 탐색: 같은 a에서는 z_N이 동일한데 b가 늘면 False-Yes가 오름 (exploratory, 원인 단계는 이 실험으로 정하지 않음)
+- STEP 5-2 결과 요약도 같은 폴더에 있음 (N-last에서만 지지, H2·z_P 결과는 물체 크기·현저성과 구분되지 않음)
 
 ### 5-3. 집계 교정 / 개입 (계획)
 

@@ -1,0 +1,161 @@
+{
+  "check": "step5_accumulation_main_integrity",
+  "note": "Integrity check only: structure, linkage, settings, token counts, N-first representation identity within bf16 numerical error, answer parsing, margin sign agreement and timing. No False-Yes rate, margin contrast or other evaluation metric is computed.",
+  "status": "passed",
+  "run_dir": "results/step5/qwen2_5_vl_3b/accumulation/extraction",
+  "frozen_dir": "results/step5/qwen2_5_vl_3b/accumulation/frozen/v2",
+  "frozen_version": "v2",
+  "records": 15360,
+  "n_images": [
+    2,
+    3,
+    4,
+    5
+  ],
+  "conditions": [
+    "all_positive",
+    "one_negative"
+  ],
+  "placements": [
+    "N-first",
+    "N-last"
+  ],
+  "strengths": [
+    "High",
+    "Low"
+  ],
+  "peak_gpu_memory_gb": 8.086617088,
+  "median_seconds_per_case": {
+    "2": 0.20999956130981445,
+    "3": 0.2969996929168701,
+    "4": 0.3839995861053467,
+    "5": 0.4970041513442993
+  },
+  "checks": {
+    "run_structure": {
+      "passed": true,
+      "detail": {
+        "missing": [],
+        "unreferenced": []
+      }
+    },
+    "step5_options": {
+      "passed": true
+    },
+    "same_model_resolution_precision_as_step4": {
+      "passed": true,
+      "detail": {
+        "image_processor": true,
+        "model_config": true,
+        "chat_template": true,
+        "dtype": true,
+        "attention_implementation": true,
+        "pooling": true
+      }
+    },
+    "cases_file_hash_matches_freeze": {
+      "passed": true,
+      "detail": {
+        "data/step5_accumulation/step5_seed52_cases.jsonl": "f73796d62f158ca6f63ea82d0048ff52b918cf4a70158f4a44bcdcddab74fb74"
+      }
+    },
+    "all_frozen_cases_in_order": {
+      "passed": true,
+      "detail": {
+        "records": 15360,
+        "frozen": 15360
+      }
+    },
+    "cases_identical_to_frozen_cases_file": {
+      "passed": true
+    },
+    "image_files_match_ids": {
+      "passed": true
+    },
+    "image_token_spans_follow_image_order": {
+      "passed": true
+    },
+    "h_q_is_last_valid_input_token": {
+      "passed": true
+    },
+    "features_recomputed_and_linked": {
+      "passed": true
+    },
+    "image_token_count_identical_across_inputs": {
+      "passed": true
+    },
+    "image_token_count_identical_to_step4": {
+      "passed": true
+    },
+    "n_first_within_bf16_tolerance": {
+      "passed": true,
+      "detail": {
+        "criterion": "cosine distance <= 0.001 at every layer",
+        "series_two_image_input": {
+          "n": 2880,
+          "exceeding": 0,
+          "max_max_cosine_distance": 0.0004025232250504107,
+          "max_max_relative_l2": 0.02844750645812836,
+          "max_max_abs_delta_p": 0.10320188036070344,
+          "median_max_cosine_distance": 5.5672120382377344e-05,
+          "median_max_relative_l2": 0.010819771388833707,
+          "median_max_abs_delta_p": 0.0009374831269416458
+        },
+        "step4_position1": {
+          "n": 3840,
+          "exceeding": 0,
+          "max_max_cosine_distance": 0.0006599172564294431,
+          "max_max_relative_l2": 0.04008167715510604,
+          "max_max_abs_delta_p": 0.10426875749370335,
+          "median_max_cosine_distance": 5.308351276794854e-05,
+          "median_max_relative_l2": 0.010545772987733782,
+          "median_max_abs_delta_p": 0.0007882215719689743
+        },
+        "exceeding_inputs": []
+      }
+    },
+    "answers_parsed_reported": {
+      "passed": true,
+      "detail": {
+        "parsed": 15360,
+        "unparsed": 0,
+        "n": 15360
+      }
+    },
+    "margin_sign_agreement_reported": {
+      "passed": true,
+      "detail": {
+        "logit_margin": {
+          "agree": 14889,
+          "ties": 471,
+          "n": 15360
+        },
+        "variant_logit_margin": {
+          "agree": 14910,
+          "ties": 0,
+          "n": 15360
+        },
+        "fp32_logit_margin": {
+          "agree": 15131,
+          "ties": 0,
+          "n": 15360
+        },
+        "fp32_variant_logit_margin": {
+          "agree": 15120,
+          "ties": 0,
+          "n": 15360
+        }
+      }
+    },
+    "fp32_margin_close_to_bf16": {
+      "passed": true,
+      "detail": {
+        "max_abs_difference": 0.1231164033524692
+      }
+    },
+    "frozen_files_unchanged": {
+      "passed": true
+    }
+  },
+  "failed": []
+}

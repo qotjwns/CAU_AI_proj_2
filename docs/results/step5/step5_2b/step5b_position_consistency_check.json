@@ -1,0 +1,39 @@
+{
+  "check": "step5_2b_position_cases",
+  "status": "passed",
+  "note": "Consistency with STEP 5-2 inputs and the position-grid rule only. No model output is read.",
+  "cases": "data/step5_position/step5b_position_cases.jsonl",
+  "cases_sha256": "9d0f634b6a8c954087c3750307832099c7ca05268458e498e04315a7d5ac922b",
+  "source_cases": "data/step5_accumulation/step5_seed52_cases.jsonl",
+  "source_cases_sha256": "f73796d62f158ca6f63ea82d0048ff52b918cf4a70158f4a44bcdcddab74fb74",
+  "accumulation_frozen_manifest_sha256": "8b76d02ca609672bbcba0fe337c020dc6f716c5ae993dd288111ac39affae54b",
+  "counts": {
+    "records": 11520,
+    "unique_inputs": 11520,
+    "by_role": {
+      "first": 2880,
+      "middle": 5760,
+      "last": 2880
+    },
+    "by_n_images_and_position": {
+      "3_images_a0": 960,
+      "3_images_a1": 960,
+      "3_images_a2": 960,
+      "4_images_a0": 960,
+      "4_images_a1": 960,
+      "4_images_a2": 960,
+      "4_images_a3": 960,
+      "5_images_a0": 960,
+      "5_images_a1": 960,
+      "5_images_a2": 960,
+      "5_images_a3": 960,
+      "5_images_a4": 960
+    },
+    "series": 960,
+    "n_images_anchor": 480,
+    "classes": 20,
+    "images": 762
+  },
+  "failure_count": 0,
+  "failures": []
+}

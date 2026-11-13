@@ -1,0 +1,222 @@
+{
+  "check": "step5_2b_position_main_integrity",
+  "note": "Integrity check only: structure, linkage, settings, recorded environment, token counts, prefix identity of z_N, answer parsing, margin sign agreement and timing. No False-Yes rate, position contrast or other evaluation metric is computed.",
+  "status": "passed",
+  "run_dir": "results/step5/qwen2_5_vl_3b/position/extraction",
+  "frozen_dir": "results/step5/qwen2_5_vl_3b/position/frozen/v1",
+  "frozen_version": "v1",
+  "records": 11520,
+  "n_images": [
+    3,
+    4,
+    5
+  ],
+  "roles": [
+    "first",
+    "last",
+    "middle"
+  ],
+  "positions": [
+    [
+      3,
+      0
+    ],
+    [
+      3,
+      1
+    ],
+    [
+      3,
+      2
+    ],
+    [
+      4,
+      0
+    ],
+    [
+      4,
+      1
+    ],
+    [
+      4,
+      2
+    ],
+    [
+      4,
+      3
+    ],
+    [
+      5,
+      0
+    ],
+    [
+      5,
+      1
+    ],
+    [
+      5,
+      2
+    ],
+    [
+      5,
+      3
+    ],
+    [
+      5,
+      4
+    ]
+  ],
+  "peak_gpu_memory_gb": 8.086202368,
+  "median_seconds_per_case": {
+    "3": 1.0,
+    "4": 0.0,
+    "5": 0.0
+  },
+  "checks": {
+    "run_structure": {
+      "passed": true,
+      "detail": {
+        "missing": [],
+        "unreferenced": []
+      }
+    },
+    "step5_options": {
+      "passed": true
+    },
+    "same_model_resolution_precision_as_5_2": {
+      "passed": true,
+      "detail": {
+        "image_processor": true,
+        "model_config": true,
+        "chat_template": true,
+        "dtype": true,
+        "attention_implementation": true,
+        "pooling": true
+      }
+    },
+    "environment_recorded": {
+      "passed": true,
+      "detail": {
+        "gpus": [
+          "NVIDIA GeForce RTX 4090"
+        ],
+        "drivers": [
+          "615.71.09"
+        ],
+        "torch": "2.14.1+cu132",
+        "transformers": "5.22.2",
+        "versions_5_2": {
+          "torch": "2.14.1+cu132",
+          "transformers": "5.22.2"
+        }
+      }
+    },
+    "cases_file_hash_matches_freeze": {
+      "passed": true,
+      "detail": {
+        "data/step5_position/step5b_position_cases.jsonl": "9d0f634b6a8c954087c3750307832099c7ca05268458e498e04315a7d5ac922b"
+      }
+    },
+    "all_frozen_cases_in_order": {
+      "passed": true,
+      "detail": {
+        "records": 11520,
+        "frozen": 11520
+      }
+    },
+    "cases_identical_to_frozen_cases_file": {
+      "passed": true
+    },
+    "image_files_match_ids": {
+      "passed": true
+    },
+    "image_token_spans_follow_image_order": {
+      "passed": true
+    },
+    "h_q_is_last_valid_input_token": {
+      "passed": true
+    },
+    "features_recomputed_and_linked": {
+      "passed": true
+    },
+    "image_token_count_identical_across_inputs": {
+      "passed": true
+    },
+    "image_token_count_identical_to_step4": {
+      "passed": true
+    },
+    "prefix_identity_within_run": {
+      "passed": true,
+      "detail": {
+        "criterion": "cosine distance <= 0.001 at every layer",
+        "n": 6720,
+        "exceeding": 0,
+        "max_cosine_distance": 0.0004547983343872186,
+        "median_cosine_distance": 5.0494229409059344e-05,
+        "max_relative_l2": 0.03215712292284517,
+        "exceeding_inputs": []
+      }
+    },
+    "prefix_identity_across_runs_reported": {
+      "passed": true,
+      "detail": {
+        "criterion": "cosine distance <= 0.001 at every layer (reported; does not block evaluation)",
+        "n": 11520,
+        "exceeding": 0,
+        "max_cosine_distance": 0.0004547983343872186,
+        "median_cosine_distance": 4.137084053895679e-05,
+        "max_relative_l2": 0.03215712292284517,
+        "environment_difference": false,
+        "missing_5_2_references": []
+      }
+    },
+    "answers_parsed_reported": {
+      "passed": true,
+      "detail": {
+        "parsed": 11520,
+        "unparsed": 0,
+        "n": 11520
+      }
+    },
+    "margin_sign_agreement_reported": {
+      "passed": true,
+      "detail": {
+        "logit_margin": {
+          "agree": 11109,
+          "ties": 411,
+          "n": 11520
+        },
+        "variant_logit_margin": {
+          "agree": 11120,
+          "ties": 0,
+          "n": 11520
+        },
+        "fp32_logit_margin": {
+          "agree": 11321,
+          "ties": 0,
+          "n": 11520
+        },
+        "fp32_variant_logit_margin": {
+          "agree": 11314,
+          "ties": 0,
+          "n": 11520
+        }
+      }
+    },
+    "fp32_margin_close_to_bf16": {
+      "passed": true,
+      "detail": {
+        "max_abs_difference": 0.1238693583291024
+      }
+    },
+    "frozen_files_unchanged": {
+      "passed": true,
+      "detail": {
+        "step5_2b": [],
+        "step5_2": [],
+        "step4": []
+      }
+    }
+  },
+  "failed": []
+}
