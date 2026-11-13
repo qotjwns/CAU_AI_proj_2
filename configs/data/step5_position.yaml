@@ -1,0 +1,13 @@
+# STEP 5-2b 위치 격자 케이스: 5-2 계열의 이미지만 사용 (새 이미지 없음, 결정적 생성이라 seed 불필요)
+# 같은 계열·같은 P 장수 k에서 P 순서(P1..Pk)를 유지하고 N만 a+1번째에 둔다 (a = N 앞의 P 수, b = k - a).
+source_config: configs/data/balanced3.yaml                      # image_dir
+accumulation_config: configs/data/step5_accumulation.yaml       # 5-2 프롬프트 템플릿
+accumulation_cases: data/step5_accumulation/step5_seed52_cases.jsonl
+accumulation_frozen_manifest: results/step5/qwen2_5_vl_3b/accumulation/frozen/v2/manifest.json
+p_counts: [2, 3, 4]       # 가운데 위치가 있는 P 장수 (전체 3~5장)
+roles:
+  middle: "N after a = 1..k-1 P images (new conditions; confirmatory targets)"
+  first: "a = 0 (N-first). Same input as STEP 5-2, re-extracted in the 5-2b run (5-2 value already observed)"
+  last: "a = k (N-last). Same input as STEP 5-2, re-extracted in the 5-2b run (5-2 value already observed)"
+output_dir: data/step5_position
+stem: step5b_position

@@ -192,6 +192,37 @@ python -m experiments.step5_accumulation.explore
 
 - 해석 단서: All-P의 Probe AND는 Probe 양성 P만 고른 설계에 따른 값. H2(High − Low)와 z_P 결과는 물체 크기·현저성과 구분되지 않음
 
+### 5-2b. 위치 격자 실험 (confirmatory)
+
+같은 이미지 묶음에서 N 위치만 바꿨을 때(N 앞 P 수 a, 뒤 P 수 b) False-Yes가 어떻게 달라지는지 봅니다. 5-2 계열 이미지만 사용합니다.
+H1b(가운데 − 끝 > 0), H2b(가운데 − 첫 위치 > 0), False-Yes 최소 효과 0.05, 97.5% CI. 첫·끝 위치는 5-2에서 이미 관찰한 값이며,
+확증 대비는 5-2b 실행 안에서 다시 추출한 값으로 계산합니다. 사전 등록: `configs/experiments/step5_position.yaml` → `position/frozen/v1`.
+
+```bash
+# 케이스 (가운데 5,760 + 첫·끝 재추출 5,760 = 11,520) + 일관성 검사 (5-2 입력과 이미지·P 순서·프롬프트 대조)
+python -m scripts.build_step5_position_cases
+python -m scripts.check_step5_position_cases
+# 사전 등록 고정 (파일럿·본 추출 전, 덮어쓰기 금지)
+python -m experiments.step5_position.freeze
+
+# [GPU] 파일럿 48건 (4계열 × 12, 모든 위치) → 무결성 검사 (평가 지표 없음)
+python -m experiments.step5_position.extract --limit 48 --verify-repeat --verify-reference \
+  --output-dir results/step5/qwen2_5_vl_3b/position/pilot
+python -m experiments.step5_position.check_pilot
+# [GPU] 본 추출 (GPU 종류·드라이버·라이브러리 버전을 run.json에 기록) → 무결성 검사
+python -m experiments.step5_position.extract
+python -m experiments.step5_position.validate
+```
+
+- prefix 동일성: 같은 계열·같은 a의 입력은 z_N이 같아야 함(코사인 거리 ≤ 0.001, 실패 시 평가 중단).
+  5-2 실행과의 비교는 보고만 하고, 기준을 넘으면 실행 환경 차이로 표시
+- 평가 코드는 본 추출 후 사전 등록 그대로 작성
+
+### 5-3. 집계 교정 / 개입 (계획)
+
+- 평가 원칙 (사전 기록): 게이트의 PPP 유지율은 선별하지 않은 P 이미지(STEP 4의 PPP 입력)로 측정한다.
+  5-2·5-2b의 P 이미지는 Probe 양성으로 고른 것이라 유지율을 낙관적으로 만든다.
+
 ## 결과 위치
 
 | 단계 | 표·텐서 | 그림 |
@@ -201,7 +232,8 @@ python -m experiments.step5_accumulation.explore
 | STEP 3 | `results/step3/qwen2_5_vl_3b/` | `reports/step3/qwen2_5_vl_3b/` |
 | STEP 4 | `results/step4/qwen2_5_vl_3b/` (`frozen/`, `pilot/`, `extraction/` 포함) | `reports/step4/qwen2_5_vl_3b/` |
 | STEP 5 진단 (5-0, 5-1) | `results/step5_diagnostics/qwen2_5_vl_3b/` | `reports/step5_diagnostics/qwen2_5_vl_3b/` |
-| STEP 5-2 | `results/step5/qwen2_5_vl_3b/accumulation/` (`frozen/`, `pilot/`, `extraction/`, `extraction_vision_fp32/`, `evaluation/`) | `reports/step5/qwen2_5_vl_3b/accumulation/` |
+| STEP 5-2 | `results/step5/qwen2_5_vl_3b/accumulation/` (`frozen/`, `pilot/`, `extraction/`, `extraction_vision_fp32/`, `evaluation/`) | `reports/step5/qwen2_5_vl_3b/accumulation/` (`exploratory/` 포함) |
+| STEP 5-2b | `data/step5_position/`, `results/step5/qwen2_5_vl_3b/position/` (`frozen/`, `pilot/`, `extraction/`) | — |
 
 설정 파일은 `configs/` (데이터 `data/`, 모델 `models/`, 단계별 `experiments/`)에 있습니다.
 `data/`·`results/`·`reports/`는 git에 없으며, 서버 백업 tar 복원 방법은 `BACKUP_README.md`에 있습니다.
