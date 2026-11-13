@@ -40,6 +40,14 @@
 - 탐색(판정과 무관): 같은 a에서는 z_N이 동일한데(prefix 성질) b가 늘면 False-Yes가 오른다. 이는 exploratory 관찰이며,
   어느 처리 단계(attention, 집계, 최종 결정)가 원인인지는 이 실험으로 정하지 않는다. 장수도 함께 바뀌어 분리되지 않는다.
 
+## STEP 5-3 인과 실험 A·B (사전 등록 고정, GPU 실행 전)
+
+`step5_3/`: 고정 manifest 사본 2개(A `patching/frozen/v1`, B `attention/frozen/v1`), 계획 검사(`plan_check.json`),
+freeze 전 표본 수·예상 CI 반폭(`prefreeze_report.json`), 분할(`split.json`, seed 53).
+- 고정 시각: A 2026-11-13T13:13:03Z, B 2026-11-13T13:13:04Z. 둘 다 5-3 모델 출력이 생기기 전이다.
+- 계획 파일 원본(`data/step5_causal/`, 34MB)은 git 밖에 있다. 해시는 manifest와 `plan_check.json`에 기록돼 있다.
+- 계획서: `docs/plans/step5_3_causal_ab.md`
+
 ## 대용량 산출물 (git 밖)
 
 | 내용 | 위치 |

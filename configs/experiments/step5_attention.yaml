@@ -1,0 +1,209 @@
+# STEP 5-3 실험 B: 이미지 뒤 텍스트 토큰 → 이미지 토큰 attention 개입 — 사전 등록 v3 (2026-11-13, freeze 대상)
+# 계획서: docs/plans/step5_3_causal_ab.md. v3: robust 표기 확정(사용자 2026-11-13), 구현 세부와 실행 규칙 확정.
+# v1에서 제외했던 "질문 텍스트 구간 attention 개입"은 v2 주 개입 위치(질문 구간 + 마지막 토큰)에 포함되었다.
+status: confirmatory
+model_name: Qwen/Qwen2.5-VL-3B-Instruct
+model_config: configs/models/qwen2_5_vl_3b.yaml
+split_config: configs/data/step5_causal_split.yaml
+baseline:
+  one_negative_run: results/step5/qwen2_5_vl_3b/position/extraction       # 5-2b 본 추출 (3~5장 전체 위치 격자)
+  one_negative_frozen: results/step5/qwen2_5_vl_3b/position/frozen/v1
+  all_positive_run: results/step5/qwen2_5_vl_3b/accumulation/extraction    # 5-2 본 추출 (All-P 3~5장)
+  all_positive_frozen: results/step5/qwen2_5_vl_3b/accumulation/frozen/v2
+pilot_dir: results/step5/qwen2_5_vl_3b/attention/pilot
+main_dir: results/step5/qwen2_5_vl_3b/attention/main
+frozen_dir: results/step5/qwen2_5_vl_3b/attention/frozen/v1
+evaluation_dir: results/step5/qwen2_5_vl_3b/attention/evaluation
+verification:                  # 사용자 승인 2026-11-13
+  answer_agreement_min: 0.99
+  margin_abs_tolerance: 0.25
+  margin_within_share_min: 0.99
+stop_conditions:               # 사용자 지정 2026-11-13: 이 경우에만 멈추고 보고
+  rules:
+    - "fast-path equivalence check fails (pilot)"
+    - "any integrity criterion fails (pilot or main)"
+    - "estimated main-run time from measured pilot times exceeds the limit"
+  max_estimated_hours: 8
+  estimate_file: results/step5/qwen2_5_vl_3b/causal_time_estimate.json
+pilot:
+  items: "selection half: the first one-N item (by item_id) for each image count x N position x population (18) and the first All-P item per image count (3)"
+  reproduction_sample: "40 selection-half inputs per image count (seed 53), no intervention"
+  extra_rows: "one zero-size intervention row per pilot item"
+  reference: "every row of the pilot items recomputed on the reference path (model.generate full prefill with the same attention change)"
+  policy: "integrity and timing only; pilot outputs are not part of any analysis"
+code_files:
+  - src/core/causal_plan.py
+  - src/core/causal_conditions.py
+  - src/core/causal_runtime.py
+  - src/core/causal_check.py
+  - src/core/causal_freeze.py
+  - src/core/causal_eval.py
+  - scripts/build_step5_causal_plan.py
+  - experiments/step5_causal/run.py
+  - experiments/step5_causal/check.py
+  - experiments/step5_causal/freeze.py
+  - experiments/step5_causal/evaluate.py
+  - experiments/step5_causal/selftest.py
+  - experiments/step5_causal/selftest_eval.py
+  - scripts/step5_causal_gpu.sh
+  - src/core/model.py
+  - src/core/inference.py
+  - src/core/prompts.py
+  - src/core/features.py
+  - src/core/accumulation_explore.py
+  - src/core/probe_cases.py
+  - src/common/environment.py
+
+preregistration:
+  decided_before_step5_3b_data: true
+  version_note: "v3: user decisions 1-7 (2026-11-13) incorporated; robust label requires both class CIs"
+  scope: >-
+    Tests whether the answer depends on attention from the text tokens after the images (question and chat-template
+    tokens, including the last input token) to the N image's tokens, by blocking or boosting that attention within one
+    4-layer band and comparing with the same intervention on one P image of the same input. The N location is taken
+    from the ground truth (oracle); this is a mechanism test, not a deployable correction. Images and baseline outputs
+    are reused from STEP 5-2 / 5-2b (selection / confirmation split), not an independent test on new images.
+  data:
+    split: "selection / confirmation halves by N image ID, seed 53 (configs/data/step5_causal_split.yaml)"
+    grid: "STEP 5-2b one-N inputs, 3-5 images, every N position (11,520 inputs)"
+    block_population: "inputs answered No in the 5-2b main run (Correct-No): 6,499"
+    boost_population: "inputs answered Yes in the 5-2b main run (False-Yes): 5,021"
+    all_positive: "STEP 5-2 All-P inputs with 3-5 images answered Yes in the 5-2 main run: 3,994 (side effects only)"
+    baseline_answers: "fixed from the baseline runs before any 5-3 output; inclusion never uses 5-3 outputs"
+  intervention:
+    query_primary: >-
+      every input position after the last image's vision-end marker up to and including the last input token (question
+      text and chat-template tokens; 26-28 tokens per input in 5-2b), all 16 attention heads; generated tokens are not
+      modified
+    query_secondary: "the last input token only (the v1 primary site); reported as a secondary analysis (one-N only)"
+    target_tokens: "the image's image-pad token span (manifest image_spans); vision start / end marker tokens are not included"
+    bands: [[1, 4], [5, 8], [9, 12], [13, 16], [17, 20], [21, 24], [25, 28], [29, 32], [33, 36]]
+    block: "the additive attention mask entries from the query positions to the target tokens are set to the minimum of the mask dtype (bf16) in every layer of the band: target weight 0, the rest renormalized"
+    boost: >-
+      log(4) added to those attention logits before the softmax in every layer of the band, stored in the mask dtype
+      (bf16: 1.3828125, a multiplicative factor of 3.986 on the target's unnormalized weight)
+    targets:
+      N: "the N image"
+      P_control: >-
+        the P image of the same input whose image token count is closest to the N image's; ties -> the one closest in
+        position to N; then the earlier one
+      all_positive: "the image in the N slot (5-2 placement) and a control P image chosen by the same rule; primary query only"
+    generation: "greedy, max_new_tokens 8, the model's generation config (repetition penalty 1.05) as in the baseline extraction; continues from the intervened state"
+    computation: >-
+      Fast path: the prefix up to and including the last image's vision-end marker is computed once per input with a
+      KV cache; the post-image tokens are recomputed for all conditions of an input in one batch (explicit additive
+      4D mask in every layer), with the no-intervention row in the same batch.
+  outcomes:
+    margin: "fp32 variant margin (as STEP 5-2)"
+    delta: "Delta m(target) = intervened margin minus the no-intervention margin of the same batch"
+    contrast: "C = Delta m(N) - Delta m(P_control), per input"
+    answer_parsing: "as STEP 5-2"
+  band_selection:
+    data: "selection half only, primary query"
+    block: "the band with the largest mean C over the block population"
+    boost: "the band with the smallest (most negative) mean C over the boost population"
+    ties: "means within 1e-9 are ties -> the earliest band"
+    record: "written to selection.json (with a SHA-256 of its content) by the evaluation code before any confirmation-half value is computed"
+    secondary_query: "bands for the last-token-only condition are chosen by the same rule and reported descriptively"
+  hypotheses:
+    B-H1:
+      name: "necessity of attention to N"
+      statement: >-
+        Blocking attention from the post-image text tokens to N raises the Yes - No margin of Correct-No inputs, and
+        raises it more than blocking attention to a P image.
+      estimates:
+        contrast: "mean C under blocking at the selected block band, over confirmation-half block inputs"
+        n_arm: "mean Delta m(N) under the same blocking, same inputs"
+      weighting: "each input equal weight; image counts and positions pooled"
+      direction: positive
+      minimum_effect: 0.5          # 대비 C에만 적용. Delta m(N)은 방향과 CI만 요구
+    B-H2:
+      name: "correction by boosting attention to N"
+      statement: >-
+        Boosting attention from the post-image text tokens to N lowers the Yes - No margin of False-Yes inputs, and
+        lowers it more than boosting attention to a P image.
+      estimates:
+        contrast: "mean C under boosting at the selected boost band, over confirmation-half boost inputs"
+        n_arm: "mean Delta m(N) under the same boosting, same inputs"
+      weighting: "each input equal weight; image counts and positions pooled"
+      direction: negative
+      minimum_effect: -0.5         # 대비 C에만 적용
+    note: "B-H1 and B-H2 are decided separately; neither changes any STEP 5-2 / 5-2b decision."
+  minimum_effect:
+    confirmed: true
+    confirmed_by: "user, 2026-11-13, before any STEP 5-3 output"
+    margin_logit: 0.5
+    rationale: >-
+      Larger than the 5-2b H1b margin effect (middle minus last, +0.36) and smaller than the 5-2 N-last P4 - P1 margin
+      effect (+0.87); four bf16 margin steps (0.125). Preliminary projected 97.5% CI half-width per half: 0.05-0.18
+      using the baseline margin SD (1.21) as a proxy for the SD of C and Delta m(N) (0.08-0.29 if the SD is 2.0).
+  decision:
+    level: "97.5% intervals (Bonferroni for two primary hypotheses), N-image cluster bootstrap"
+    joint_condition_note: >-
+      Support requires both the contrast condition and the N-arm condition; because both must hold (intersection-union),
+      no further multiplicity adjustment is applied.
+    B-H1:
+      supported: >-
+        (1) mean C >= 0.5 AND N-image cluster 97.5% CI lower bound of C > 0; AND (2) mean Delta m(N) > 0 AND N-image
+        cluster 97.5% CI lower bound of Delta m(N) > 0
+      robust_label: >-
+        'robust support' only if the class cluster 97.5% CI lower bounds of both C and Delta m(N) are also > 0;
+        otherwise 'support (cross-class generalization uncertain)' (confirmed by the user, 2026-11-13)
+      no_meaningful_difference: "N-image cluster 97.5% CI upper bound of C < 0.5"
+      otherwise: "inconclusive; the unmet condition is stated (contrast, N arm, or both)"
+    B-H2:
+      supported: >-
+        (1) mean C <= -0.5 AND N-image cluster 97.5% CI upper bound of C < 0; AND (2) mean Delta m(N) < 0 AND N-image
+        cluster 97.5% CI upper bound of Delta m(N) < 0
+      robust_label: >-
+        'robust support' only if the class cluster 97.5% CI upper bounds of both C and Delta m(N) are also < 0;
+        otherwise 'support (cross-class generalization uncertain)' (confirmed by the user, 2026-11-13)
+      no_meaningful_difference: "N-image cluster 97.5% CI lower bound of C > -0.5"
+      otherwise: "inconclusive; the unmet condition is stated (contrast, N arm, or both)"
+    p_arm_report: >-
+      Delta m(P_control) for the same inputs and band is always reported with its sign, estimate and 97.5% N-image
+      cluster CI (no decision); it shows whether C comes from the N side or the P side.
+  statistics:
+    method: "percentile cluster bootstrap; 97.5% for B-H1 / B-H2 and the P-arm report, 95% for secondary results (labelled)"
+    resampling_unit: "N image ID within the confirmation half; all inputs of a drawn N image enter together"
+    sensitivity: "class cluster bootstrap (robust label)"
+    reps: 1000
+    seed: 42
+  secondary:
+    last_token_only: >-
+      C, Delta m(N) and Delta m(P_control) for the last-token-only query condition (at its own selected bands and at
+      the primary bands)
+    answer_change: >-
+      block: share of Correct-No inputs whose answer becomes Yes; boost: share of False-Yes inputs whose answer becomes No
+      (oracle correction rate); N and P targets, at the selected bands
+    breakdown: "by image count (3, 4, 5) and N position (first / middle / last), at the selected bands"
+    band_curves: "mean C, Delta m(N), Delta m(P) for all nine bands, both halves and both query conditions; confirmation-half bands other than the selected ones are exploratory"
+    margin_bf16: "the same contrasts with the bf16 'Yes' / 'No' margin"
+    all_positive_side_effect: >-
+      block and boost (primary query) on the N-slot image and on the control P image of All-P inputs answering Yes
+      without intervention (confirmation half): share whose answer becomes No (95% CI at the selected bands, estimates
+      for every band) and Delta margin; a share above 0.05 at a selected band is flagged as a warning
+    sensitivity: >-
+      contrasts repeated (1) without inputs whose no-intervention answer differs from the baseline answer and
+      (2) without inputs whose baseline bf16 margin sign disagrees with the baseline answer (ties included)
+  interpretation:
+    - "Oracle N location: the result shows dependence on attention to N, not a usable correction method."
+    - >-
+      Only the direct path from the post-image text tokens to N is changed. Image tokens after N may already carry
+      information from N, and that indirect path is left intact; its size depends on the N position (none for N-last),
+      which is stated when positions are compared.
+    - "The P control matches token count, not position; position differences between N and the control remain."
+    - "Images and baseline outputs are reused (selection / confirmation split), not an independent test on new images."
+  revision_note: >-
+    v1 used the last input token as the only query and excluded the question-text-span variant as a separate candidate.
+    v2 (user, 2026-11-13) makes the post-image text tokens (question span + last token) the primary query, which
+    absorbs that variant; the last-token-only condition becomes secondary. A question-span-only condition (without the
+    last token) is not included.
+  integrity_checks:
+    - "no-intervention fast path reproduces the 5-2b / 5-2 baseline answers and margins: parsed answer agreement >= 0.99 and |fp32 variant margin difference| <= 0.25 in >= 99% of inputs (else stop)"
+    - "fast path vs reference path (model.generate full prefill with the same attention change) on every pilot row: same thresholds (else stop)"
+    - "zero-size intervention row (pilot) equals the no-intervention row of the same batch within the same thresholds; the exact-equality share is reported"
+    - "image token spans and the post-image boundary identical to the baseline runs (checked for every input before running)"
+    - "run.json records GPU type, driver, CUDA and library versions"
+  reported_not_decided:
+    - "answer agreement excluding inputs whose baseline bf16 margin is within one bf16 step (|margin| <= 0.125); see experiment A"

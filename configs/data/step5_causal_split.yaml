@@ -1,0 +1,33 @@
+# STEP 5-3 실험 A·B 공통 분할과 계획 파일 — v3 (2026-11-13, A 쌍 확대 채택 반영)
+# 계획서: docs/plans/step5_3_causal_ab.md. 생성: python -m scripts.build_step5_causal_plan (CPU, 5-3 출력 전)
+# 분할·계획 파일은 덮어쓰지 않으며, freeze 때 해시로 고정한다.
+status: confirmed
+seed: 53                                   # 사용자 승인 2026-11-13 (분할 후보와 C1 동률 추첨에 사용)
+unit: "N image ID (anchor of a 5-2 / 5-2b series); 480 = 20 classes x 24"
+baseline_answers: "parsed answers of the 5-2b main run (one-N) and the 5-2 main run (All-P); no 5-3 output is used"
+stratification: "within each class, 12 N images to the selection half and 12 to the confirmation half"
+balance:
+  candidates: 10000                        # seed로 만든 클래스 층화 후보 분할 수
+  score: >-
+    Sum over image counts n = 3, 4, 5 and over three unit types of |selection - confirmation| / (selection + confirmation)
+    (exact rational arithmetic), where the unit types are (1) experiment A units (same series and n: an input at a
+    non-last position answered Yes and the N-last input answered No; expanded definition adopted 2026-11-13),
+    (2) experiment B block inputs (one-N, answered No), (3) experiment B boost inputs (one-N, answered Yes).
+  rule: "the candidate with the smallest score; ties -> the smallest candidate index"
+  halves: "in each candidate, the first 12 N images of a class (sorted IDs, then a seeded shuffle) form the selection half"
+  note: >-
+    Only baseline answers already observed in the 5-2b main run enter the score. Per-class A unit counts cannot be
+    balanced in classes with very few units.
+output_dir: data/step5_causal
+files:
+  split: split.json                  # N 이미지 ID → 절반, 후보 번호와 점수
+  inputs: inputs.jsonl               # 쓰는 모든 입력: 케이스, 절반, 기준 실행 값(답, margin, 토큰 구간)
+  a_units: a_units.jsonl             # 실험 A 단위 (복원·오염 받는 쪽, 같은 묶음 donor, C1 donor)
+  a_allp: a_allp.jsonl               # 실험 A All-P 짝 (두 순서)
+  b_items: b_items.jsonl             # 실험 B 항목 (모집단, 대상 N/N 자리, 대조 P, 이미지 뒤 구간)
+check_file: plan_check.json
+report_file: prefreeze_report.json        # freeze 전 표본 수·예상 CI 반폭 (freeze 때 해시 고정)
+report_before_freeze:
+  - "per half: N images, classes, A units by n and position and N images with units, recipients without a C1 donor (by direction)"
+  - "per half: B block / boost inputs by n and position (first / middle / last) and N images; All-P baseline-Yes inputs"
+  - "projected 97.5% CI half-widths for A-H1, A-H2, B-H1, B-H2 (N-image and class cluster)"

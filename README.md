@@ -236,8 +236,39 @@ python -m experiments.step5_position.visualize
 - 탐색: 같은 a에서는 z_N이 동일한데 b가 늘면 False-Yes가 오름 (exploratory, 원인 단계는 이 실험으로 정하지 않음)
 - STEP 5-2 결과 요약도 같은 폴더에 있음 (N-last에서만 지지, H2·z_P 결과는 물체 크기·현저성과 구분되지 않음)
 
-### 5-3. 집계 교정 / 개입 (계획)
+### 5-3. 인과 실험 A·B (confirmatory, 사전 등록 v3)
 
+5-2·5-2b의 N 위치 효과가 어디를 거쳐 답에 반영되는지 개입으로 확인합니다. 계획서: `docs/plans/step5_3_causal_ab.md`.
+- **A (h_q patching):** 같은 이미지 묶음의 두 순서 사이에서 마지막 입력 토큰의 층 ℓ residual을 이식합니다.
+  - 비교 대상: 다른 묶음의 조건 일치 donor(C1)
+  - 판정: 답 변화율 차이, 최소 효과 0.15
+- **B (attention 개입):** 이미지 뒤 텍스트 토큰 → N 이미지 attention을 4층 구간에서 차단·강화합니다.
+  - 비교 대상: 같은 입력의 P 이미지 대조
+  - 판정: 대비 C = Δm(N) − Δm(P)와 Δm(N), 최소 효과 0.5 logit
+- **공통:** N 이미지 480장을 선택 절반 / 확증 절반으로 나눕니다(seed 53). 층·구간은 선택 절반에서 고르고, 판정은 확증 절반에서 97.5% CI로 합니다.
+
+```bash
+# 분할·계획 (CPU, 5-3 출력 전, 덮어쓰기 금지) + freeze 전 표본 수·예상 CI 반폭
+python -m scripts.build_step5_causal_plan
+python -m scripts.build_step5_causal_plan --report
+# 자체 시험 (CPU): 작은 무작위 모델로 개입 경로, 가짜 결과로 검사·평가 판정
+python -m experiments.step5_causal.selftest
+# 사전 등록 고정 (실험별, 덮어쓰기 금지)
+python -m experiments.step5_causal.freeze --experiment A
+python -m experiments.step5_causal.freeze --experiment B
+# 서버 업로드 묶음 (계획·고정본·COCO 이미지 762장) → cache/step5_causal/upload/
+bash scripts/step5_causal_bundle.sh
+
+# [GPU] 서버: 자체 시험 → 연습 실행 A·B와 검사(동등성·무결성) → 시간 추정(8시간 한도) → 본 실행 A·B와 검사 → 결과 tar
+bash scripts/step5_causal_gpu.sh
+
+# 평가 (로컬 CPU, 한 번만): 먼저 구조만 확인, 그다음 본 평가 (선택 결과를 selection.json에 먼저 기록)
+python -m experiments.step5_causal.evaluate --experiment A --check-only
+python -m experiments.step5_causal.evaluate --experiment A
+python -m experiments.step5_causal.evaluate --experiment B
+```
+
+- 결과: `results/step5/qwen2_5_vl_3b/{patching,attention}/` (`frozen/v1`, `pilot`, `main`, `evaluation`)
 - 평가 원칙 (사전 기록): 게이트의 PPP 유지율은 선별하지 않은 P 이미지(STEP 4의 PPP 입력)로 측정한다.
   5-2·5-2b의 P 이미지는 Probe 양성으로 고른 것이라 유지율을 낙관적으로 만든다.
 

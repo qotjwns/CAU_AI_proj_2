@@ -1,0 +1,102 @@
+{
+  "status": "passed",
+  "failed": [],
+  "checks": {
+    "split_480_classes_12_12": {
+      "passed": true,
+      "detail": {
+        "anchors": 480,
+        "classes": 20
+      }
+    },
+    "split_disjoint": {
+      "passed": true,
+      "detail": null
+    },
+    "one_negative_grid_complete": {
+      "passed": true,
+      "detail": {
+        "records": 11520
+      }
+    },
+    "a_units_valid": {
+      "passed": true,
+      "detail": {
+        "invalid": []
+      }
+    },
+    "a_units_count": {
+      "passed": true,
+      "detail": {
+        "units": 1186
+      }
+    },
+    "a_c1_missing_reported": {
+      "passed": true,
+      "detail": {
+        "restore": {
+          "confirmation": 5,
+          "selection": 3
+        },
+        "contaminate": {
+          "confirmation": 12,
+          "selection": 3
+        }
+      }
+    },
+    "a_allp_pairs": {
+      "passed": true,
+      "detail": {
+        "pairs": 590
+      }
+    },
+    "b_items_valid": {
+      "passed": true,
+      "detail": {
+        "invalid": []
+      }
+    },
+    "b_items_count": {
+      "passed": true,
+      "detail": {
+        "block": 6499,
+        "boost": 5021,
+        "all_positive": 3994
+      }
+    },
+    "image_token_counts_consistent": {
+      "passed": true,
+      "detail": {
+        "images": 762
+      }
+    },
+    "post_image_suffix_lengths": {
+      "passed": true,
+      "detail": {
+        "26": 10372,
+        "27": 4413,
+        "28": 729
+      }
+    }
+  },
+  "note": "Built from baseline answers only (5-2b and 5-2 main runs); no 5-3 output existed.",
+  "baseline_sha256": {
+    "results/step5/qwen2_5_vl_3b/position/extraction/manifest.jsonl": "c5eecdb99c21672a04ff7f87e9a190ac323d3418636ccca254fc5359f0423cc8",
+    "results/step5/qwen2_5_vl_3b/position/extraction/run.json": "06c84b0649f11b522160a563a3245a6afa51b663889bb2a87b7559ad64024bec",
+    "results/step5/qwen2_5_vl_3b/accumulation/extraction/manifest.jsonl": "ddcf8790dd9c5f1b0a66b410ec4cdea94dd3a9f50280fb9fb1675f7f420415e2",
+    "results/step5/qwen2_5_vl_3b/accumulation/extraction/run.json": "7133d930ee4584ebec0ae611d7b0e515a5087f066c31eb3643de90d3784d111e"
+  },
+  "files_sha256": {
+    "data/step5_causal/split.json": "4b87267da5006c50c9529531fe49f4cc846c774f57aed7f5d94e0ecc2812d32a",
+    "data/step5_causal/inputs.jsonl": "cf7148cdfd5f5ec6e99f8ce5cdb08f6ead1bef06b1e85d7f8fe82ecd47134140",
+    "data/step5_causal/a_units.jsonl": "64f321ac5ad5556b85428658bd208711c510294b3774df8f7ec95ae74036a9ef",
+    "data/step5_causal/a_allp.jsonl": "8ce99869e63dd967e343127d84fc3328cd8b4601ba7d0889b469f0880c62516a",
+    "data/step5_causal/b_items.jsonl": "73e2388e2de9a4c7b5df120da72058548888e23644d070724d1c26e732d13c7a"
+  },
+  "counts": {
+    "inputs": 15596,
+    "a_units": 1186,
+    "a_allp_pairs": 590,
+    "b_items": 15514
+  }
+}

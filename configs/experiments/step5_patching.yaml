@@ -1,0 +1,194 @@
+# STEP 5-3 실험 A: 질문 토큰(h_q) patching — 사전 등록 v3 (2026-11-13, freeze 대상)
+# 계획서: docs/plans/step5_3_causal_ab.md. v3: 쌍 확대 채택(사용자 2026-11-13), 구현 세부와 실행 규칙 확정.
+# freeze 시 이 파일·분할·계획 파일·코드 해시를 고정한다. 이후 변경은 새 버전과 이유가 필요하다.
+status: confirmatory
+model_name: Qwen/Qwen2.5-VL-3B-Instruct
+model_config: configs/models/qwen2_5_vl_3b.yaml
+split_config: configs/data/step5_causal_split.yaml
+baseline:
+  one_negative_run: results/step5/qwen2_5_vl_3b/position/extraction       # 5-2b 본 추출 (3~5장 전체 위치)
+  one_negative_frozen: results/step5/qwen2_5_vl_3b/position/frozen/v1
+  all_positive_run: results/step5/qwen2_5_vl_3b/accumulation/extraction    # 5-2 본 추출 (All-P)
+  all_positive_frozen: results/step5/qwen2_5_vl_3b/accumulation/frozen/v2
+pilot_dir: results/step5/qwen2_5_vl_3b/patching/pilot
+main_dir: results/step5/qwen2_5_vl_3b/patching/main
+frozen_dir: results/step5/qwen2_5_vl_3b/patching/frozen/v1
+evaluation_dir: results/step5/qwen2_5_vl_3b/patching/evaluation
+verification:                  # 사용자 승인 2026-11-13
+  answer_agreement_min: 0.99
+  margin_abs_tolerance: 0.25
+  margin_within_share_min: 0.99
+  final_layer_donor_tolerance: 0.01
+stop_conditions:               # 사용자 지정 2026-11-13: 이 경우에만 멈추고 보고
+  rules:
+    - "fast-path equivalence check fails (pilot)"
+    - "any integrity criterion fails (pilot or main)"
+    - "estimated main-run time from measured pilot times exceeds the limit"
+  max_estimated_hours: 8
+  estimate_file: results/step5/qwen2_5_vl_3b/causal_time_estimate.json
+pilot:
+  units: "selection half: the first unit (by unit_id) for each image count x position (first, middle) with C1 donors in both directions (6 units) and their All-P pairs"
+  reproduction_sample: "40 selection-half inputs per image count (seed 53), no intervention"
+  reference: "every row of the pilot unit batches recomputed on the reference path (model.generate full prefill with the same patch)"
+  policy: "integrity and timing only; pilot outputs are not part of any analysis"
+code_files:
+  - src/core/causal_plan.py
+  - src/core/causal_conditions.py
+  - src/core/causal_runtime.py
+  - src/core/causal_check.py
+  - src/core/causal_freeze.py
+  - src/core/causal_eval.py
+  - scripts/build_step5_causal_plan.py
+  - experiments/step5_causal/run.py
+  - experiments/step5_causal/check.py
+  - experiments/step5_causal/freeze.py
+  - experiments/step5_causal/evaluate.py
+  - experiments/step5_causal/selftest.py
+  - experiments/step5_causal/selftest_eval.py
+  - scripts/step5_causal_gpu.sh
+  - src/core/model.py
+  - src/core/inference.py
+  - src/core/prompts.py
+  - src/core/features.py
+  - src/core/accumulation_explore.py
+  - src/core/probe_cases.py
+  - src/common/environment.py
+
+preregistration:
+  decided_before_step5_3a_data: true
+  version_note: "v3: user decisions 1-7 (2026-11-13) incorporated; expanded A units adopted"
+  scope: >-
+    Tests whether the residual state of the last input token (h_q, the token that predicts the answer) at one decoder
+    layer carries information specific to the image set that changes the answer. h_q is patched between two orders
+    of the same images (a non-last N position answered Yes, the N-last order answered No) and compared with a
+    condition-matched donor from a different image set. Images and baseline outputs are reused from STEP 5-2 / 5-2b:
+    this is a selection / confirmation split of existing data, not an independent test on new images.
+  data:
+    split: "selection / confirmation halves by N image ID, seed 53 (configs/data/step5_causal_split.yaml)"
+    units: >-
+      Expanded definition (adopted by the user, 2026-11-13). Same series (one N image x one strength) and same image
+      count n in {3, 4, 5}: an input with N at a non-last position a (first a = 0 or middle) answered Yes
+      (False-Yes) and the N-last input of the same series and n answered No (Correct-No) in the 5-2b main run.
+      1,186 units (390 first + 796 middle; n = 3: 351, 4: 404, 5: 431) from 313 N images; about 590 per half.
+    baseline_answers: "parsed answers of the 5-2b main run, fixed before any 5-3 output; inclusion never uses 5-3 outputs"
+  intervention:
+    site: >-
+      Output (residual stream) of decoder layer l at the last input token, i.e. the input of decoder layer l + 1
+      (l = 0 is the embedding output; l = 36 is the input of the final norm).
+    operation: >-
+      Replace the recipient's value at the site with the donor's value at the same site. The donor value comes from
+      the donor's own no-intervention run on the same computation path. All other positions and layers are
+      unchanged. Greedy generation (max_new_tokens 8, the model's generation config including its repetition
+      penalty 1.05, as in the baseline extraction) continues from the patched state.
+    layers_run: "l = 0..36 (l = 1..36 is the sweep; l = 0 and l = 36 also serve as integrity checks)"
+    directions:
+      restore: "recipient = the False-Yes input of a unit; same-set donor = the unit's N-last Correct-No input; target answer No"
+      contaminate: "recipient = the unit's N-last Correct-No input; same-set donor = the unit's False-Yes input; target answer Yes"
+    control_donor_C1: >-
+      An input of a different N image in the same half with the same class and image count (identical prompt), the
+      same N position and the same baseline answer as the same-set donor (restore: N-last answered No; contaminate:
+      N at the same a answered Yes). Among candidates, the one whose total input token count is closest to the
+      recipient's; remaining ties are broken by a seeded draw (seed 53, units in sorted order). One C1 donor per
+      unit and direction, recorded in the plan before any GPU run. Units without a candidate are excluded from that
+      direction's primary contrast and counted.
+    computation: >-
+      Fast path: the prefix (all tokens before the last input token) is computed once per recipient with a KV cache;
+      the last token is recomputed for all conditions of a unit and direction in one batch, with the no-intervention
+      row in the same batch.
+  outcomes:
+    answer_parsing: "as STEP 5-2 (greedy, max_new_tokens 8, strip, trailing punctuation removed, case-folded)"
+    success: "restore: parsed answer No; contaminate: parsed answer Yes; unparsed is not a success"
+    change_rate: "share of units with a success"
+    margin: >-
+      fp32 variant margin (as STEP 5-2). Delta margin = patched margin minus the no-intervention margin of the same
+      batch.
+  layer_selection:
+    confirmed_by: "user, 2026-11-13 (per direction)"
+    data: "selection half only; units that have a C1 donor in that direction"
+    candidates: >-
+      l = 1..35. l = 36 is excluded because both donors then reproduce their own answer, so the difference is 0 by
+      construction; l = 0 is an identity check.
+    score: "S(l) = (number of units with a success under the same-set donor) - (number under the C1 donor); integer counts"
+    rule: "per direction: l*_restore = argmax S_restore(l), l*_contaminate = argmax S_contaminate(l); ties -> the smallest l"
+    non_positive: "if max S(l) <= 0, l* is still chosen by the rule and the confirmation decision proceeds unchanged (reported)"
+    record: "written to selection.json (with a SHA-256 of its content) by the evaluation code before any confirmation-half value is computed"
+  hypotheses:
+    A-H1:
+      name: "restoration specificity"
+      statement: "At l*_restore, the same-set donor turns False-Yes into No more often than the C1 donor."
+      estimate: "mean over confirmation-half units of [success(same-set donor) - success(C1 donor)] at l*_restore"
+      weighting: "each unit equal weight; image counts 3-5 and positions (first, middle) pooled"
+      direction: positive
+      minimum_effect: 0.15
+    A-H2:
+      name: "contamination specificity"
+      statement: "At l*_contaminate, the same-set donor turns Correct-No into Yes more often than the C1 donor."
+      estimate: "mean over confirmation-half units of [success(same-set donor) - success(C1 donor)] at l*_contaminate"
+      weighting: "each unit equal weight (an N-last recipient enters once per unit); image counts and positions pooled"
+      direction: positive
+      minimum_effect: 0.15
+    note: "A-H1 and A-H2 are decided separately; neither changes any STEP 5-2 / 5-2b decision."
+  minimum_effect:
+    confirmed: true
+    confirmed_by: "user, 2026-11-13, before any STEP 5-3 output"
+    rationale: >-
+      The answer change rate is the primary outcome because the margin gap between the two orders of a pair is small
+      (median 0.71-0.94 logit by image count, 0.84 overall), which makes a logit-scale minimum effect too strict.
+      Projected 97.5% CI half-width per half with the expanded units: 0.08-0.10 with within-N-image correlation 0.3
+      (0.05-0.15 for correlation 0-1; variance of the paired difference 0.30-0.48; 5.4 units per N image weighted).
+  decision:
+    level: "97.5% intervals (Bonferroni for two primary hypotheses), N-image cluster bootstrap"
+    A-H1:
+      supported: "estimate >= 0.15 AND N-image cluster 97.5% CI lower bound > 0"
+      robust_label: "'robust support' only if the class cluster 97.5% CI lower bound is also > 0; otherwise 'support (cross-class generalization uncertain)'"
+      no_meaningful_difference: "N-image cluster 97.5% CI upper bound < 0.15"
+      otherwise: inconclusive
+    A-H2:
+      supported: "estimate >= 0.15 AND N-image cluster 97.5% CI lower bound > 0"
+      robust_label: "'robust support' only if the class cluster 97.5% CI lower bound is also > 0; otherwise 'support (cross-class generalization uncertain)'"
+      no_meaningful_difference: "N-image cluster 97.5% CI upper bound < 0.15"
+      otherwise: inconclusive
+  statistics:
+    method: "percentile cluster bootstrap; 97.5% for A-H1 / A-H2, 95% for secondary and descriptive results (labelled)"
+    resampling_unit: "the unit's N image ID, within the confirmation half; C1 donors stay fixed"
+    sensitivity: "class cluster bootstrap (robust label)"
+    reps: 1000
+    seed: 42
+  descriptive:                 # 판정과 무관
+    single_layer: >-
+      l*_joint = argmax [S_restore(l) + S_contaminate(l)] on the selection half (same candidates and tie rule); its value
+      and both directions' confirmation-half contrasts at l*_joint (95%), descriptive only.
+    earliest_half_restore: >-
+      per half: the earliest l (1..36) at which the restore change rate under the same-set donor is >= 0.5 ('none' if
+      no layer reaches it); the same value under the C1 donor for comparison.
+    layer_curves: >-
+      change rates for both donors and the difference at every l, both directions and both halves;
+      confirmation-half layers other than l* are exploratory.
+  secondary:
+    by_position: "A-H1 and A-H2 contrasts for first-position units (= the original N-first-only definition) and middle-position units, at l*"
+    per_count: "the same contrasts for 3, 4 and 5 images"
+    margin: "Delta margin contrast (same-set minus C1) at l*, fp32 variant and bf16 margins"
+    all_positive_side_effect: >-
+      For the same series and image counts as the units, the two 5-2 All-P orders (N slot first / last) are patched into
+      each other at every l; reported at l*_restore and l*_contaminate on the confirmation half: share of recipients
+      answering Yes without intervention whose answer becomes No, and Delta margin.
+    sensitivity: >-
+      contrasts repeated (1) without units whose recipient's no-intervention answer differs from the baseline answer
+      and (2) without units whose recipient's baseline bf16 margin sign disagrees with the baseline answer (ties included)
+  interpretation:
+    - "The same-set donor differs from the recipient in image order, so set-specific and order information are not separated."
+    - "The C1 donor has a different total token count (closest chosen); its value is placed at the recipient's last position."
+    - "First and middle positions are pooled; the 5-2b middle - first False-Yes difference was inconclusive (+0.04)."
+    - "Images and baseline outputs are reused (selection / confirmation split), not an independent test on new images."
+  integrity_checks:
+    - "no-intervention fast path reproduces the 5-2b / 5-2 baseline answers and margins: parsed answer agreement >= 0.99 and |fp32 variant margin difference| <= 0.25 in >= 99% of inputs (else stop)"
+    - "fast path vs reference path (model.generate full prefill with the same patch) on every pilot row: same thresholds (else stop)"
+    - "l = 0 patch equals the no-intervention row of the same batch within the same thresholds (the last input token is the same token in every input); the exact-equality share is reported"
+    - "l = 36 patch reproduces the donor's no-intervention fp32 variant margin within 0.01 in every row, and its parsed answer in >= 99% of rows"
+    - "image token spans identical to the baseline runs (checked for every input before running)"
+    - "run.json records GPU type, driver, CUDA and library versions"
+  reported_not_decided:
+    - >-
+      answer agreement excluding inputs whose baseline bf16 margin is within one bf16 step (|margin| <= 0.125): 3.6% of
+      5-2b inputs are exact bf16 Yes/No ties (resolved as No by the lower token id) and 11% are within one step, so a
+      different but correct computation path can break such ties differently
