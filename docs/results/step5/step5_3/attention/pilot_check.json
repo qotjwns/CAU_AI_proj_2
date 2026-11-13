@@ -1,0 +1,97 @@
+{
+  "status": "passed",
+  "kind": "B pilot",
+  "frozen_version": "v2",
+  "failed": [],
+  "checks": {
+    "run_completed": {
+      "passed": true,
+      "detail": "completed"
+    },
+    "batches_complete": {
+      "passed": true,
+      "detail": {
+        "planned": 21,
+        "written": 21,
+        "missing_or_wrong": []
+      }
+    },
+    "finite_values": {
+      "passed": true,
+      "detail": null
+    },
+    "reproduction_no_intervention": {
+      "passed": true,
+      "detail": {
+        "n": 141,
+        "n_outside_near_tie": 119,
+        "near_tie_pairs": 22,
+        "answer_agreement_outside_near_tie": 1.0,
+        "answer_agreement_all_reported": 0.9574468085106383,
+        "margin_within_share": 1.0,
+        "margin_gap_median": 0.027482872550997683,
+        "margin_gap_max": 0.11714993846181443,
+        "exact_share": 0.0,
+        "passed": true
+      }
+    },
+    "reproduction_sample_complete": {
+      "passed": true,
+      "detail": {
+        "planned": 120,
+        "written": 120
+      }
+    },
+    "zero_intervention_identity": {
+      "passed": true,
+      "detail": {
+        "n": 21,
+        "n_outside_near_tie": 19,
+        "near_tie_pairs": 2,
+        "answer_agreement_outside_near_tie": 1.0,
+        "answer_agreement_all_reported": 1.0,
+        "margin_within_share": 1.0,
+        "margin_gap_median": 0.0,
+        "margin_gap_max": 0.0,
+        "exact_share": 1.0,
+        "passed": true
+      }
+    },
+    "fast_path_equivalence": {
+      "passed": true,
+      "detail": {
+        "n": 798,
+        "n_outside_near_tie": 705,
+        "near_tie_pairs": 93,
+        "answer_agreement_outside_near_tie": 1.0,
+        "answer_agreement_all_reported": 0.9611528822055138,
+        "margin_within_share": 1.0,
+        "margin_gap_median": 0.021945522245442106,
+        "margin_gap_max": 0.12428604110664665,
+        "exact_share": 0.0,
+        "passed": true,
+        "missing_reference_batches": []
+      }
+    },
+    "frozen_version_matches": {
+      "passed": true,
+      "detail": {
+        "dir": "results/step5/qwen2_5_vl_3b/attention/frozen/v2",
+        "version": "v2",
+        "manifest_sha256": "0a127b1822a66e5dbcb3ad4b147977a4fc14d64a7be8a9d8b096849cfde28375"
+      }
+    },
+    "environment_recorded": {
+      "passed": true,
+      "detail": [
+        {
+          "index": 0,
+          "name": "NVIDIA GeForce RTX 4090",
+          "capability": "8.9",
+          "total_memory_bytes": 50950569984
+        }
+      ]
+    }
+  },
+  "note": "Integrity only: no hypothesis contrast or decision is computed."
+}

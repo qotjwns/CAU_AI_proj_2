@@ -266,7 +266,12 @@ bash scripts/step5_causal_gpu.sh
 python -m experiments.step5_causal.evaluate --experiment A --check-only
 python -m experiments.step5_causal.evaluate --experiment A
 python -m experiments.step5_causal.evaluate --experiment B
+# 그림·탐색 표 (analysis.json만 읽음, descriptive/exploratory) → reports/step5/qwen2_5_vl_3b/causal/
+python -m experiments.step5_causal.visualize
 ```
+
+- 결과 (2026-11-14, 사전 등록 v3, 한 번만 평가): A-H1·A-H2 no meaningful difference, B-H1(차단) inconclusive
+  (C +0.479, 최소 효과 0.5 미달), B-H2(강화) robust support (C −0.680). 표·그림은 `docs/results/step5/README.md`
 
 - 결과: `results/step5/qwen2_5_vl_3b/{patching,attention}/` (`frozen/v1`·`v2`·`v3`, `pilot`, `main`, `evaluation`).
   GPU 실행은 고정본 v2(GPU 출력 전 수정)로 했다. 답 일치 기준은 bf16 동점 근처(|m| ≤ 0.125)를 뺀 입력에 적용하고, 무개입 답이 바뀐 입력은 분석에서 빼고 개수를 보고한다
@@ -287,6 +292,7 @@ python -m experiments.step5_causal.evaluate --experiment B
 | STEP 5 진단 (5-0, 5-1) | `results/step5_diagnostics/qwen2_5_vl_3b/` | `reports/step5_diagnostics/qwen2_5_vl_3b/` |
 | STEP 5-2 | `results/step5/qwen2_5_vl_3b/accumulation/` (`frozen/`, `pilot/`, `extraction/`, `extraction_vision_fp32/`, `evaluation/`) | `reports/step5/qwen2_5_vl_3b/accumulation/` (`exploratory/` 포함) |
 | STEP 5-2b | `data/step5_position/`, `results/step5/qwen2_5_vl_3b/position/` (`frozen/`, `pilot/`, `extraction/`) | — |
+| STEP 5-3 | `data/step5_causal/`, `results/step5/qwen2_5_vl_3b/{patching,attention}/` (`frozen/`, `pilot/`, `main/`, `evaluation/`) | `reports/step5/qwen2_5_vl_3b/causal/` |
 
 설정 파일은 `configs/` (데이터 `data/`, 모델 `models/`, 단계별 `experiments/`)에 있습니다.
 `data/`·`results/`·`reports/`는 git에 없으며, 서버 백업 tar 복원 방법은 `BACKUP_README.md`에 있습니다.

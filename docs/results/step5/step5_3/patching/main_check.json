@@ -1,0 +1,112 @@
+{
+  "status": "passed",
+  "kind": "A main",
+  "frozen_version": "v2",
+  "failed": [],
+  "checks": {
+    "run_completed": {
+      "passed": true,
+      "detail": "completed"
+    },
+    "phase1_complete": {
+      "passed": true,
+      "detail": {
+        "planned": 3831,
+        "written": 3831
+      }
+    },
+    "batches_complete": {
+      "passed": true,
+      "detail": {
+        "planned": 3552,
+        "written": 3552,
+        "missing_or_wrong": []
+      }
+    },
+    "finite_values": {
+      "passed": true,
+      "detail": null
+    },
+    "reproduction_no_intervention": {
+      "passed": true,
+      "detail": {
+        "n": 3831,
+        "n_outside_near_tie": 3288,
+        "near_tie_pairs": 543,
+        "answer_agreement_outside_near_tie": 1.0,
+        "answer_agreement_all_reported": 0.979378752283999,
+        "margin_within_share": 1.0,
+        "margin_gap_median": 0.012343414366089434,
+        "margin_gap_max": 0.08690569340952692,
+        "exact_share": 0.0,
+        "passed": true
+      }
+    },
+    "none_rows_vs_phase1_reported": {
+      "passed": true,
+      "detail": {
+        "n": 3552,
+        "n_outside_near_tie": 2787,
+        "near_tie_pairs": 765,
+        "answer_agreement_outside_near_tie": 1.0,
+        "answer_agreement_all_reported": 0.9738175675675675,
+        "margin_within_share": 1.0,
+        "margin_gap_median": 0.011705117956513078,
+        "margin_gap_max": 0.06677658044089796,
+        "exact_share": 0.0,
+        "passed": true
+      }
+    },
+    "l0_patch_identity": {
+      "passed": true,
+      "detail": {
+        "n": 5901,
+        "n_outside_near_tie": 4413,
+        "near_tie_pairs": 1488,
+        "answer_agreement_outside_near_tie": 1.0,
+        "answer_agreement_all_reported": 1.0,
+        "margin_within_share": 1.0,
+        "margin_gap_median": 0.0,
+        "margin_gap_max": 0.0,
+        "exact_share": 1.0,
+        "passed": true
+      }
+    },
+    "final_layer_reproduces_donor": {
+      "passed": true,
+      "detail": {
+        "n": 5901,
+        "n_outside_near_tie": 4807,
+        "near_tie_pairs": 1094,
+        "answer_agreement_outside_near_tie": 1.0,
+        "answer_agreement_all_reported": 1.0,
+        "margin_within_share": 1.0,
+        "margin_gap_median": 0.0,
+        "margin_gap_max": 0.0005733183129770225,
+        "exact_share": 0.9994916115912558,
+        "passed": true,
+        "margin_within_0.01_all": true
+      }
+    },
+    "frozen_version_matches": {
+      "passed": true,
+      "detail": {
+        "dir": "results/step5/qwen2_5_vl_3b/patching/frozen/v2",
+        "version": "v2",
+        "manifest_sha256": "70d3a21b1c2e3db39e7d3c358c63bbafada43cf0fd52d7db99b851e8ddb072b8"
+      }
+    },
+    "environment_recorded": {
+      "passed": true,
+      "detail": [
+        {
+          "index": 0,
+          "name": "NVIDIA GeForce RTX 4090",
+          "capability": "8.9",
+          "total_memory_bytes": 50950569984
+        }
+      ]
+    }
+  },
+  "note": "Integrity only: no hypothesis contrast or decision is computed."
+}

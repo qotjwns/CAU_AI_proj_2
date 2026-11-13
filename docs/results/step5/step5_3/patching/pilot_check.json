@@ -1,0 +1,128 @@
+{
+  "status": "passed",
+  "kind": "A pilot",
+  "frozen_version": "v2",
+  "failed": [],
+  "checks": {
+    "run_completed": {
+      "passed": true,
+      "detail": "completed"
+    },
+    "phase1_complete": {
+      "passed": true,
+      "detail": {
+        "planned": 147,
+        "written": 147
+      }
+    },
+    "batches_complete": {
+      "passed": true,
+      "detail": {
+        "planned": 20,
+        "written": 20,
+        "missing_or_wrong": []
+      }
+    },
+    "finite_values": {
+      "passed": true,
+      "detail": null
+    },
+    "reproduction_no_intervention": {
+      "passed": true,
+      "detail": {
+        "n": 147,
+        "n_outside_near_tie": 125,
+        "near_tie_pairs": 22,
+        "answer_agreement_outside_near_tie": 1.0,
+        "answer_agreement_all_reported": 0.9795918367346939,
+        "margin_within_share": 1.0,
+        "margin_gap_median": 0.011698325967898882,
+        "margin_gap_max": 0.05083714286764973,
+        "exact_share": 0.0,
+        "passed": true
+      }
+    },
+    "none_rows_vs_phase1_reported": {
+      "passed": true,
+      "detail": {
+        "n": 20,
+        "n_outside_near_tie": 16,
+        "near_tie_pairs": 4,
+        "answer_agreement_outside_near_tie": 1.0,
+        "answer_agreement_all_reported": 1.0,
+        "margin_within_share": 1.0,
+        "margin_gap_median": 0.01006213495084829,
+        "margin_gap_max": 0.03153079888663868,
+        "exact_share": 0.0,
+        "passed": true
+      }
+    },
+    "l0_patch_identity": {
+      "passed": true,
+      "detail": {
+        "n": 32,
+        "n_outside_near_tie": 22,
+        "near_tie_pairs": 10,
+        "answer_agreement_outside_near_tie": 1.0,
+        "answer_agreement_all_reported": 1.0,
+        "margin_within_share": 1.0,
+        "margin_gap_median": 0.0,
+        "margin_gap_max": 0.0,
+        "exact_share": 1.0,
+        "passed": true
+      }
+    },
+    "final_layer_reproduces_donor": {
+      "passed": true,
+      "detail": {
+        "n": 32,
+        "n_outside_near_tie": 28,
+        "near_tie_pairs": 4,
+        "answer_agreement_outside_near_tie": 1.0,
+        "answer_agreement_all_reported": 1.0,
+        "margin_within_share": 1.0,
+        "margin_gap_median": 0.0,
+        "margin_gap_max": 0.0,
+        "exact_share": 1.0,
+        "passed": true,
+        "margin_within_0.01_all": true
+      }
+    },
+    "fast_path_equivalence": {
+      "passed": true,
+      "detail": {
+        "n": 900,
+        "n_outside_near_tie": 534,
+        "near_tie_pairs": 366,
+        "answer_agreement_outside_near_tie": 1.0,
+        "answer_agreement_all_reported": 0.9877777777777778,
+        "margin_within_share": 1.0,
+        "margin_gap_median": 0.010440175105928873,
+        "margin_gap_max": 0.06935863904334383,
+        "exact_share": 0.02666666666666667,
+        "passed": true,
+        "missing_reference_batches": []
+      }
+    },
+    "frozen_version_matches": {
+      "passed": true,
+      "detail": {
+        "dir": "results/step5/qwen2_5_vl_3b/patching/frozen/v2",
+        "version": "v2",
+        "manifest_sha256": "70d3a21b1c2e3db39e7d3c358c63bbafada43cf0fd52d7db99b851e8ddb072b8"
+      }
+    },
+    "environment_recorded": {
+      "passed": true,
+      "detail": [
+        {
+          "index": 0,
+          "name": "NVIDIA GeForce RTX 4090",
+          "capability": "8.9",
+          "total_memory_bytes": 50950569984
+        }
+      ]
+    }
+  },
+  "note": "Integrity only: no hypothesis contrast or decision is computed."
+}

@@ -1,0 +1,5 @@
+﻿layer_rule,layer,outcome,unit,n,estimate,ci_low,ci_high,class_ci_low,class_ci_high,n_anchors,level
+l*_restore,12,yes_to_no_rate,All-P recipient answering Yes in the baseline and without intervention,528,0.0,0.0,0.0,0.0,0.0,153,0.95
+l*_restore,12,delta_margin,All-P recipient answering Yes in the baseline and without intervention,528,0.0009096465566817778,-0.0009563149712068499,0.0025687599939788214,-0.0010937137344848413,0.002777129829689994,153,0.95
+l*_contaminate,14,yes_to_no_rate,All-P recipient answering Yes in the baseline and without intervention,528,0.0,0.0,0.0,0.0,0.0,153,0.95
+l*_contaminate,14,delta_margin,All-P recipient answering Yes in the baseline and without intervention,528,-9.932016362578334e-06,-0.0018275990046040882,0.0017695460512143942,-0.001882956508084801,0.0015307535799209402,153,0.95

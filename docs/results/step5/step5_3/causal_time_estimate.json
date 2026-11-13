@@ -1,0 +1,11 @@
+{
+  "status": "passed",
+  "hours_main": {
+    "A": 0.7501700015295648,
+    "B": 2.2326659413277494
+  },
+  "overhead_factor": 1.1,
+  "total_hours_with_overhead": 3.281119537143046,
+  "limit_hours": 8,
+  "rule": "measured pilot seconds (means by image count) x planned main work; stop if above the limit"
+}

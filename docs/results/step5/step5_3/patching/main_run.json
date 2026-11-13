@@ -1,0 +1,103 @@
+{
+  "status": "completed",
+  "experiment": "A",
+  "stage": "main",
+  "resumed": false,
+  "started_at": "2026-11-13T13:46:26+00:00",
+  "frozen": {
+    "dir": "results/step5/qwen2_5_vl_3b/patching/frozen/v2",
+    "version": "v2",
+    "manifest_sha256": "70d3a21b1c2e3db39e7d3c358c63bbafada43cf0fd52d7db99b851e8ddb072b8"
+  },
+  "environment": {
+    "python": "3.12.15",
+    "platform": "Linux-6.8.0-142-generic-x86_64-with-glibc2.39",
+    "torch": "2.14.1+cu132",
+    "torch_cuda": "13.2",
+    "cudnn": 92400,
+    "cuda_available": true,
+    "packages": {
+      "torch": "2.14.1+cu132",
+      "transformers": "5.22.2",
+      "accelerate": null,
+      "tokenizers": "0.23.3",
+      "safetensors": "0.8.0",
+      "pillow": "13.0.0",
+      "numpy": "2.5.4",
+      "qwen-vl-utils": null,
+      "torchvision": "0.29.1+cu132",
+      "flash-attn": null
+    },
+    "installed_packages_sha256": "b9acedd23e8ba59da24f5e7b1cf80275930d2c5cb8681262e9ad4bc2ac17ae25",
+    "nvidia_smi": [
+      {
+        "index": "0",
+        "name": "NVIDIA GeForce RTX 4090",
+        "driver_version": "615.71.09",
+        "memory_total": "49140 MiB",
+        "compute_capability": "8.9"
+      }
+    ],
+    "gpus": [
+      {
+        "index": 0,
+        "name": "NVIDIA GeForce RTX 4090",
+        "capability": "8.9",
+        "total_memory_bytes": 50950569984
+      }
+    ]
+  },
+  "model_name": "Qwen/Qwen2.5-VL-3B-Instruct",
+  "model_files_sha256": {
+    "chat_template.json": "ad60d90252ed0b0705ba14e2d0ad0fec0beac1ea955642b54059b36052d8bc96",
+    "config.json": "7ed3eed5be6924cc800e8a5e53fc405c1aab1aaf36bad65c33403b36c56827f5",
+    "generation_config.json": "533f191cc257b7de37a4fccd0a7a1706d75e1aa660f93efaa54e5a2a9f9aace9",
+    "model.safetensors.index.json": "c7dd78a4c6bea60b51332f1baf37b8f8124ecab2c35395a29a29825bf2619768",
+    "preprocessor_config.json": "f2058c716eef96ccaed1cc1e2d0c08306b62586d535b28d9d08e691b2fab7ca0",
+    "tokenizer.json": "c0382117ea329cdf097041132f6d735924b697924d6f6fc3945713e96ce87539",
+    "tokenizer_config.json": "4abd3520120e266da84c0864fee064d1fb10806f02225911a47253dd38dc5f56",
+    "vocab.json": "ca10d7e9fb3ed18575dd1e277a2579c16d108e32f27439684afa0e10b1440910"
+  },
+  "device": "cuda:0",
+  "dtype": "torch.bfloat16",
+  "vision_dtype": "torch.bfloat16",
+  "attention_implementation": "sdpa",
+  "n_layers": 36,
+  "repetition_penalty": 1.05,
+  "boost_bias_in_mask_dtype": 1.3828125,
+  "answer_token_ids": [
+    9454,
+    2753
+  ],
+  "answer_variants": {
+    "Yes": [
+      7414,
+      9454,
+      9693,
+      9834,
+      14004,
+      14080
+    ],
+    "No": [
+      902,
+      2152,
+      2308,
+      2753,
+      5664,
+      8996,
+      72104
+    ]
+  },
+  "versions": {
+    "torch": "2.14.1+cu132",
+    "transformers": "5.22.2"
+  },
+  "batches": 3552,
+  "reproduction": 0,
+  "reference_batches": 0,
+  "phase1_inputs": 3831,
+  "finished_at": "2026-11-13T14:29:16+00:00",
+  "same_gpu_at_end": true,
+  "median_batch_seconds": 0.09889512055087835,
+  "peak_gpu_memory_bytes": 14160008704
+}
