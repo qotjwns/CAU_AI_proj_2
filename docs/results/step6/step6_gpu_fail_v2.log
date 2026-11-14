@@ -1,0 +1,126 @@
+[2026-11-14T06:46:40Z] 고정 확인 (서버 파일 해시), 환경, 자체 시험 (작은 무작위 모델)
+고정 v1 확인 | torch 2.14.1+cu132 (CUDA 13.2) | transformers 5.23.0 | GPU NVIDIA GeForce RTX 4090
+[가짜 attention] 통과
+  float64/none_causal: 출력 max 2.13e-14 상대 4.21e-16 | bias를 묶음마다 더하면 max 4.000 (예상 4.000)
+  float64/bool: 출력 max 1.91e-14 상대 4.15e-16 | bias를 묶음마다 더하면 max 4.000 (예상 4.000)
+  float64/additive_with_boost: 출력 max 1.42e-14 상대 3.49e-16 | bias를 묶음마다 더하면 max 4.000 (예상 4.000)
+  float32/none_causal: 출력 max 1.34e-05 상대 2.26e-07 | bias를 묶음마다 더하면 max 4.000 (예상 4.000)
+  float32/bool: 출력 max 9.54e-06 상대 1.99e-07 | bias를 묶음마다 더하면 max 4.000 (예상 4.000)
+  float32/additive_with_boost: 출력 max 1.14e-05 상대 2.01e-07 | bias를 묶음마다 더하면 max 4.000 (예상 4.000)
+[작은 Qwen2.5-VL, 합성 이미지]
+  synthetic/float32/sdpa: 출력 max 2.86e-06 상대 2.50e-07 (통과) | 재계산 attention max 1.43e-06 | 항등식 max 2.86e-06
+  synthetic/bfloat16/sdpa: 출력 max 2.31e-02 상대 2.39e-03 (통과) | 재계산 attention max 1.36e-02 | 항등식 max 1.91e-06
+  synthetic/float32/eager: 출력 max 2.38e-06 상대 2.21e-07 (통과) | 재계산 attention max 0.00e+00 | 항등식 max 2.38e-06
+  eager A 대 다시 계산한 A: {0: 0.0, 1: 0.0, 2: 0.0, 3: 0.0}
+[작은 Qwen2.5-VL, 실제 입력 3개]
+  float32/3img_middle (T=1127, 경계 일치 True): 출력 max 2.86e-06 상대 3.14e-07 (통과) | 재계산 attention max 2.15e-06 | 항등식 max 2.15e-06
+    개입: λ=0 동일 True, λ=3 위치 검사 통과, 후속 층 변화 [2, 3]
+  float32/4img_first (T=1520, 경계 일치 True): 출력 max 2.38e-06 상대 2.78e-07 (통과) | 재계산 attention max 2.15e-06 | 항등식 max 2.62e-06
+    개입: λ=0 동일 True, λ=3 위치 검사 통과, 후속 층 변화 [2, 3]
+  float32/5img_last (T=2144, 경계 일치 True): 출력 max 3.34e-06 상대 2.52e-07 (통과) | 재계산 attention max 2.15e-06 | 항등식 max 2.38e-06
+    개입: λ=0 동일 True, λ=3 위치 검사 통과, 후속 층 변화 [2, 3]
+  bfloat16/3img_middle (T=1127, 경계 일치 True): 출력 max 2.06e-02 상대 2.38e-03 (통과) | 재계산 attention max 8.35e-03 | 항등식 max 2.62e-06
+    개입: λ=0 동일 True, λ=3 위치 검사 통과, 후속 층 변화 [2, 3]
+  bfloat16/4img_first (T=1520, 경계 일치 True): 출력 max 2.12e-02 상대 2.33e-03 (통과) | 재계산 attention max 8.54e-03 | 항등식 max 3.34e-06
+    개입: λ=0 동일 True, λ=3 위치 검사 통과, 후속 층 변화 [2, 3]
+  bfloat16/5img_last (T=2144, 경계 일치 True): 출력 max 2.72e-02 상대 2.29e-03 (통과) | 재계산 attention max 1.29e-02 | 항등식 max 2.86e-06
+    개입: λ=0 동일 True, λ=3 위치 검사 통과, 후속 층 변화 [2, 3]
+[조건·기저 수학] 통과 {'variance=0.9/uncentered': {'k': 3, 'explained': 0.9055}, 'variance=0.9/centered': {'k': 3, 'explained': 0.9051}, 'variance=0.95/uncentered': {'k': 4, 'explained': 0.9804}, 'variance=0.95/centered': {'k': 4, 'explained': 0.9803}, 'rank=3/uncentered': {'k': 3, 'explained': 0.9055}, 'rank=3/centered': {'k': 3, 'explained': 0.9051}}
+저장: results/step6/contribution_validation/selftest.json | 전체 통과
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/workspace/proj/experiments/step6_contribution/selftest_run.py", line 293, in <module>
+    main()
+  File "/workspace/proj/experiments/step6_contribution/selftest_run.py", line 286, in main
+    print(f"[model {dtype}]", model_test(dtype))
+                              ^^^^^^^^^^^^^^^^^
+  File "/workspace/proj/experiments/step6_contribution/selftest_run.py", line 168, in model_test
+    require(abs(alone[0]["margin"] - fast[0]["margin"]) <= identity,
+  File "/workspace/proj/src/core/feature_validation.py", line 15, in require
+    raise ValueError(message)
+ValueError: The no-intervention row depends on the other rows of the batch
+[2026-11-14T06:51:58Z] 고정 확인 (서버 파일 해시), 환경, 자체 시험 (작은 무작위 모델)
+고정 v1 확인 | torch 2.14.1+cu132 (CUDA 13.2) | transformers 5.22.2 | GPU NVIDIA GeForce RTX 4090
+[가짜 attention] 통과
+  float64/none_causal: 출력 max 2.13e-14 상대 4.21e-16 | bias를 묶음마다 더하면 max 4.000 (예상 4.000)
+  float64/bool: 출력 max 1.91e-14 상대 4.15e-16 | bias를 묶음마다 더하면 max 4.000 (예상 4.000)
+  float64/additive_with_boost: 출력 max 1.42e-14 상대 3.49e-16 | bias를 묶음마다 더하면 max 4.000 (예상 4.000)
+  float32/none_causal: 출력 max 1.34e-05 상대 2.26e-07 | bias를 묶음마다 더하면 max 4.000 (예상 4.000)
+  float32/bool: 출력 max 9.54e-06 상대 1.99e-07 | bias를 묶음마다 더하면 max 4.000 (예상 4.000)
+  float32/additive_with_boost: 출력 max 1.14e-05 상대 2.01e-07 | bias를 묶음마다 더하면 max 4.000 (예상 4.000)
+[작은 Qwen2.5-VL, 합성 이미지]
+  synthetic/float32/sdpa: 출력 max 2.86e-06 상대 2.50e-07 (통과) | 재계산 attention max 1.43e-06 | 항등식 max 2.86e-06
+  synthetic/bfloat16/sdpa: 출력 max 2.31e-02 상대 2.39e-03 (통과) | 재계산 attention max 1.36e-02 | 항등식 max 1.91e-06
+  synthetic/float32/eager: 출력 max 2.38e-06 상대 2.21e-07 (통과) | 재계산 attention max 0.00e+00 | 항등식 max 2.38e-06
+  eager A 대 다시 계산한 A: {0: 0.0, 1: 0.0, 2: 0.0, 3: 0.0}
+[작은 Qwen2.5-VL, 실제 입력 3개]
+  float32/3img_middle (T=1127, 경계 일치 True): 출력 max 2.86e-06 상대 3.14e-07 (통과) | 재계산 attention max 2.15e-06 | 항등식 max 2.15e-06
+    개입: λ=0 동일 True, λ=3 위치 검사 통과, 후속 층 변화 [2, 3]
+  float32/4img_first (T=1520, 경계 일치 True): 출력 max 2.38e-06 상대 2.78e-07 (통과) | 재계산 attention max 2.15e-06 | 항등식 max 2.62e-06
+    개입: λ=0 동일 True, λ=3 위치 검사 통과, 후속 층 변화 [2, 3]
+  float32/5img_last (T=2144, 경계 일치 True): 출력 max 3.34e-06 상대 2.52e-07 (통과) | 재계산 attention max 2.15e-06 | 항등식 max 2.38e-06
+    개입: λ=0 동일 True, λ=3 위치 검사 통과, 후속 층 변화 [2, 3]
+  bfloat16/3img_middle (T=1127, 경계 일치 True): 출력 max 2.06e-02 상대 2.38e-03 (통과) | 재계산 attention max 8.35e-03 | 항등식 max 2.62e-06
+    개입: λ=0 동일 True, λ=3 위치 검사 통과, 후속 층 변화 [2, 3]
+  bfloat16/4img_first (T=1520, 경계 일치 True): 출력 max 2.12e-02 상대 2.33e-03 (통과) | 재계산 attention max 8.54e-03 | 항등식 max 3.34e-06
+    개입: λ=0 동일 True, λ=3 위치 검사 통과, 후속 층 변화 [2, 3]
+  bfloat16/5img_last (T=2144, 경계 일치 True): 출력 max 2.72e-02 상대 2.29e-03 (통과) | 재계산 attention max 1.29e-02 | 항등식 max 2.86e-06
+    개입: λ=0 동일 True, λ=3 위치 검사 통과, 후속 층 변화 [2, 3]
+[조건·기저 수학] 통과 {'variance=0.9/uncentered': {'k': 3, 'explained': 0.9055}, 'variance=0.9/centered': {'k': 3, 'explained': 0.9051}, 'variance=0.95/uncentered': {'k': 4, 'explained': 0.9804}, 'variance=0.95/centered': {'k': 4, 'explained': 0.9803}, 'rank=3/uncentered': {'k': 3, 'explained': 0.9055}, 'rank=3/centered': {'k': 3, 'explained': 0.9051}}
+저장: results/step6/contribution_validation/selftest.json | 전체 통과
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/workspace/proj/experiments/step6_contribution/selftest_run.py", line 293, in <module>
+    main()
+  File "/workspace/proj/experiments/step6_contribution/selftest_run.py", line 286, in main
+    print(f"[model {dtype}]", model_test(dtype))
+                              ^^^^^^^^^^^^^^^^^
+  File "/workspace/proj/experiments/step6_contribution/selftest_run.py", line 168, in model_test
+    require(abs(alone[0]["margin"] - fast[0]["margin"]) <= identity,
+  File "/workspace/proj/src/core/feature_validation.py", line 15, in require
+    raise ValueError(message)
+ValueError: The no-intervention row depends on the other rows of the batch
+[2026-11-14T06:59:10Z] 고정 확인 (서버 파일 해시), 환경, 자체 시험 (작은 무작위 모델)
+고정 v2 확인 | torch 2.14.1+cu132 (CUDA 13.2) | transformers 5.22.2 | GPU NVIDIA GeForce RTX 4090
+[가짜 attention] 통과
+  float64/none_causal: 출력 max 2.13e-14 상대 4.21e-16 | bias를 묶음마다 더하면 max 4.000 (예상 4.000)
+  float64/bool: 출력 max 1.91e-14 상대 4.15e-16 | bias를 묶음마다 더하면 max 4.000 (예상 4.000)
+  float64/additive_with_boost: 출력 max 1.42e-14 상대 3.49e-16 | bias를 묶음마다 더하면 max 4.000 (예상 4.000)
+  float32/none_causal: 출력 max 1.34e-05 상대 2.26e-07 | bias를 묶음마다 더하면 max 4.000 (예상 4.000)
+  float32/bool: 출력 max 9.54e-06 상대 1.99e-07 | bias를 묶음마다 더하면 max 4.000 (예상 4.000)
+  float32/additive_with_boost: 출력 max 1.14e-05 상대 2.01e-07 | bias를 묶음마다 더하면 max 4.000 (예상 4.000)
+[작은 Qwen2.5-VL, 합성 이미지]
+  synthetic/float32/sdpa: 출력 max 2.86e-06 상대 2.50e-07 (통과) | 재계산 attention max 1.43e-06 | 항등식 max 2.86e-06
+  synthetic/bfloat16/sdpa: 출력 max 2.31e-02 상대 2.39e-03 (통과) | 재계산 attention max 1.36e-02 | 항등식 max 1.91e-06
+  synthetic/float32/eager: 출력 max 2.38e-06 상대 2.21e-07 (통과) | 재계산 attention max 0.00e+00 | 항등식 max 2.38e-06
+  eager A 대 다시 계산한 A: {0: 0.0, 1: 0.0, 2: 0.0, 3: 0.0}
+[작은 Qwen2.5-VL, 실제 입력 3개]
+  float32/3img_middle (T=1127, 경계 일치 True): 출력 max 2.86e-06 상대 3.14e-07 (통과) | 재계산 attention max 2.15e-06 | 항등식 max 2.15e-06
+    개입: λ=0 동일 True, λ=3 위치 검사 통과, 후속 층 변화 [2, 3]
+  float32/4img_first (T=1520, 경계 일치 True): 출력 max 2.38e-06 상대 2.78e-07 (통과) | 재계산 attention max 2.15e-06 | 항등식 max 2.62e-06
+    개입: λ=0 동일 True, λ=3 위치 검사 통과, 후속 층 변화 [2, 3]
+  float32/5img_last (T=2144, 경계 일치 True): 출력 max 3.34e-06 상대 2.52e-07 (통과) | 재계산 attention max 2.15e-06 | 항등식 max 2.38e-06
+    개입: λ=0 동일 True, λ=3 위치 검사 통과, 후속 층 변화 [2, 3]
+  bfloat16/3img_middle (T=1127, 경계 일치 True): 출력 max 2.06e-02 상대 2.38e-03 (통과) | 재계산 attention max 8.35e-03 | 항등식 max 2.62e-06
+    개입: λ=0 동일 True, λ=3 위치 검사 통과, 후속 층 변화 [2, 3]
+  bfloat16/4img_first (T=1520, 경계 일치 True): 출력 max 2.12e-02 상대 2.33e-03 (통과) | 재계산 attention max 8.54e-03 | 항등식 max 3.34e-06
+    개입: λ=0 동일 True, λ=3 위치 검사 통과, 후속 층 변화 [2, 3]
+  bfloat16/5img_last (T=2144, 경계 일치 True): 출력 max 2.72e-02 상대 2.29e-03 (통과) | 재계산 attention max 1.29e-02 | 항등식 max 2.86e-06
+    개입: λ=0 동일 True, λ=3 위치 검사 통과, 후속 층 변화 [2, 3]
+[조건·기저 수학] 통과 {'variance=0.9/uncentered': {'k': 3, 'explained': 0.9055}, 'variance=0.9/centered': {'k': 3, 'explained': 0.9051}, 'variance=0.95/uncentered': {'k': 4, 'explained': 0.9804}, 'variance=0.95/centered': {'k': 4, 'explained': 0.9803}, 'rank=3/uncentered': {'k': 3, 'explained': 0.9055}, 'rank=3/centered': {'k': 3, 'explained': 0.9051}}
+저장: results/step6/contribution_validation/selftest.json | 전체 통과
+[model torch.float32] {'basis_matches_svd': True, 'k': {'v90': {1: 18, 2: 18}, 'v95': {1: 23, 2: 24}, 'r64': {1: 64, 2: 64}}, 'locality': True, 'fast_vs_reference_max_gap': 1.1356370221982104e-07, 'median_abs_margin_change': 0.013431028105814646, 'vectors': {'degenerate_match_rows': 0, 'norm_relative_error_max': 1.5164835796805188e-08, 'sum_identity_relative_error_max': 1.2414089884210006e-08}}
+[model torch.bfloat16] {'basis_matches_svd': True, 'k': {'v90': {1: 18, 2: 18}, 'v95': {1: 23, 2: 24}, 'r64': {1: 64, 2: 64}}, 'locality': True, 'fast_vs_reference_max_gap': 0.002421738103872473, 'median_abs_margin_change': 0.013234389720128359, 'vectors': {'degenerate_match_rows': 0, 'norm_relative_error_max': 1.587610507233138e-08, 'sum_identity_relative_error_max': 1.4542829974504274e-08}}
+통과
+[2026-11-14T06:59:37Z] 0. 실제 3B 검증 (재구성·개입 위치, fp32·bf16, 입력 3개). 실패하면 여기서 멈춘다
+Loading weights:   0%|          | 0/824 [00:00<?, ?it/s]Loading weights:   8%|▊         | 70/824 [00:00<00:01, 539.66it/s]Loading weights:  15%|█▌        | 124/824 [00:00<00:01, 506.33it/s]Loading weights:  22%|██▏       | 183/824 [00:00<00:01, 529.03it/s]Loading weights:  29%|██▉       | 243/824 [00:00<00:01, 538.16it/s]Loading weights:  37%|███▋      | 303/824 [00:00<00:00, 546.09it/s]Loading weights:  44%|████▍     | 363/824 [00:00<00:00, 555.41it/s]Loading weights:  51%|█████▏    | 423/824 [00:00<00:00, 476.46it/s]Loading weights:  68%|██████▊   | 564/824 [00:00<00:00, 721.14it/s]Loading weights:  92%|█████████▏| 760/824 [00:01<00:00, 1061.38it/s]Loading weights: 100%|██████████| 824/824 [00:01<00:00, 782.19it/s] 
+float32/3img_middle T=1127: 재구성 max 1.57e-05 상대 1.88e-06 (통과) | 개입 위치 통과
+float32/4img_first T=1520: 재구성 max 1.18e-05 상대 1.88e-06 (통과) | 개입 위치 통과
+float32/5img_last T=2144: 재구성 max 2.60e-05 상대 2.00e-06 (실패) | 개입 위치 통과
+Loading weights:   0%|          | 0/824 [00:00<?, ?it/s]Loading weights: 100%|██████████| 824/824 [00:00<00:00, 13925.41it/s]
+bfloat16/3img_middle T=1127: 재구성 max 2.20e-02 상대 3.08e-03 (통과) | 개입 위치 통과
+bfloat16/4img_first T=1520: 재구성 max 2.29e-02 상대 2.61e-03 (통과) | 개입 위치 통과
+bfloat16/5img_last T=2144: 재구성 max 3.90e-02 상대 3.12e-03 (통과) | 개입 위치 통과
+저장: results/step6/qwen2_5_vl_3b/contribution_validation/real_3b.json | 전체 실패
