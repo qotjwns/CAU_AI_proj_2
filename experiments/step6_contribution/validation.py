@@ -22,6 +22,21 @@ TOLERANCES = {
     torch.float32: {"attention": (1e-4, 1e-5), "output": (1e-4, 1e-5)},
     torch.bfloat16: {"attention": (2 ** -6, 2 ** -6), "output": (2 ** -6, 2 ** -6)},
 }
+# 재구성 판정 (STEP 6-2 고정본 v3, 사용자 승인 2026-11-14, 실제 3B fp32 검증 실패를 본 뒤):
+# - 항등식: 원소별 allclose (위 identity, float64 재계산) 그대로
+# - attention·output: 층마다 상대 오차 ‖추정 − 모델 커널‖ / ‖모델 커널‖ ≤ RELATIVE_MAX[모델 dtype]
+#   원소별 allclose는 0 근처 원소에서 모델 커널 자체의 반올림(fp32 상대 2e-6)만으로 절대 허용 오차를 넘을 수 있어
+#   판정에서 뺐다 (값은 계속 보고). 마스크·rope·scaling 불일치 같은 실제 오류는 상대 10% 이상이다.
+RELATIVE_MAX = {torch.float32: 1e-5, torch.bfloat16: 2 ** -6}
+RULE = ("identity: elementwise allclose (rtol = atol = 1e-5, float64 recompute); attention and output: per-layer "
+        "relative Frobenius error <= 1e-5 (float32 model) or 2^-6 (bfloat16 model) [frozen v3]")
+
+
+def reconstruction_passes(per_layer, dtype):
+    """per_layer: {층: {"identity": stats, "attention": stats, "output": stats, ...}} → 판정 (RULE)."""
+    limit = RELATIVE_MAX[dtype]
+    return all(checks["identity"]["allclose"] and checks["attention"]["relative"] <= limit
+               and checks["output"]["relative"] <= limit for checks in per_layer.values())
 
 
 def model_dtype(model):
@@ -83,7 +98,7 @@ def reconstruction(model, inputs, spans, layers, compute_dtype=torch.float32):
             "layers": list(layers), "groups": [(name, len(keys)) for name, keys in groups],
             "overall": overall, "per_layer": per_layer,
             "per_token_output_max_abs": {q: float(v) for q, v in zip(queries, token_max)},
-            "passed": all(overall[name]["allclose"] for name in ("identity", "attention", "output"))}
+            "rule": RULE, "passed": reconstruction_passes(per_layer, dtype)}
 
 
 def _forward(model, inputs):

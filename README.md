@@ -314,9 +314,12 @@ python -m experiments.step6_contribution.evaluate --check-only
 python -m experiments.step6_contribution.evaluate
 ```
 
-- 결과: `results/step6/qwen2_5_vl_3b/contribution/` (`frozen/v1`·`v2`, `basis`, `pilot`, `main`, `evaluation`),
+- 결과: `results/step6/qwen2_5_vl_3b/contribution/` (`frozen/v1`·`v2`·`v3`, `basis`, `pilot`, `main`, `evaluation`),
   실제 3B 검증 `results/step6/qwen2_5_vl_3b/contribution_validation/real_3b.json`
-- 실행·평가는 고정본 v2로 합니다. v2는 GPU 출력 전에 서버 CPU 자체 시험의 검사 하나만 고친 버전이고, 사전 등록은 v1과 같습니다.
+- 실행·평가는 고정본 v3로 합니다. v1·v2는 그대로 둡니다. 사전 등록(가설·조건·판정)은 v1과 같습니다.
+  - v2: GPU 출력 전에 서버 CPU 자체 시험의 검사 하나를 고쳤습니다.
+  - v3: 실제 3B 검증 실패 뒤(basis·연습·본 실행 전)에 재구성 판정을 원소별에서 층별 상대 오차로 바꿨습니다.
+  - 경위: 설계 문서 §13.8~13.9, 실패 기록 `docs/results/step6/real_3b_fail_v2.json`
 - 서버의 transformers는 5-3과 같은 5.22.2로 맞춥니다 (`requirements.txt`는 버전을 고정하지 않음).
 
 ## 결과 위치

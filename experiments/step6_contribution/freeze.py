@@ -50,7 +50,20 @@ def freeze():
     from experiments.step6_contribution.conditions import design
     require(config["design"] == design(), "Config design differs from the code constants (conditions.design)")
     existing = gpu_outputs(config)
-    require(not existing, f"STEP 6-2 GPU output already exists ({existing}); freeze must come first")
+    post_validation = bool(earlier) and revision.get("made_before_any_step6_2_gpu_output") is False
+    if post_validation:
+        # 실제 3B 검증 뒤의 수정: basis·연습·본 실행 출력 전이고, 보존한 검증 기록의 해시가 맞아야 한다
+        failure = revision.get("prior_validation_failure") or {}
+        require(revision.get("made_before_basis_pilot_main_output") is True and failure,
+                "A revision after the real 3B validation must come before any basis, pilot or main output")
+        for key in ("file", "log"):
+            path = project_path(failure[key])
+            require(path.exists() and sha256_file(path) == failure[f"{key}_sha256"],
+                    f"The preserved validation record {failure[key]} is missing or changed")
+        stages = [path for path in existing if path != config["validation_output"]]
+        require(not stages, f"Basis, pilot or main output already exists ({stages})")
+    else:
+        require(not existing, f"STEP 6-2 GPU output already exists ({existing}); freeze must come first")
     plan_check_path = project_path(config["plan_dir"]) / "plan_check.json"
     check = read_json(plan_check_path)
     require(check["status"] == "passed", "The STEP 6 plan check has not passed")
@@ -65,8 +78,10 @@ def freeze():
     manifest = {
         "status": "frozen", "experiment": "step6_contribution", "version": frozen_dir.name,
         "created_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-        "note": ("Frozen before any STEP 6-2 GPU output (real 3B validation, basis, pilot, main). The evaluation must "
-                 "use this preregistration; a change requires a new version with a recorded reason."),
+        "note": (("Frozen after the real 3B validation (record preserved, see revision) and before any basis, pilot "
+                  "or main output. " if post_validation else
+                  "Frozen before any STEP 6-2 GPU output (real 3B validation, basis, pilot, main). ")
+                 + "The evaluation must use this preregistration; a change requires a new version with a recorded reason."),
         "revision": revision if earlier else None,
         "previous_versions": [{"frozen_dir": project_relative_path(path.parent), "manifest_sha256": sha256_file(path)}
                               for path in earlier],

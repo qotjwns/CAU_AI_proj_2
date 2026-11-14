@@ -25,7 +25,7 @@ from experiments.step6_contribution import directions as D
 from experiments.step6_contribution.conditions import BASES, LAYERS, random_seed
 from experiments.step6_contribution.contribution import (
     AttentionRecorder, OutputAddition, attention_modules, contributions, key_groups, question_positions, reconstruct)
-from experiments.step6_contribution.validation import TOLERANCES, model_dtype, stats
+from experiments.step6_contribution.validation import TOLERANCES, model_dtype, reconstruction_passes, stats
 
 
 MATCH_EPSILON = 1e-12            # 크기 맞춤: ‖v‖ ≤ ε·‖c_N‖이면 0 벡터로 두고 개수를 센다
@@ -109,11 +109,13 @@ def extract(model, inputs, spans, layers=LAYERS, compute_dtype=torch.float64):
             checks = {"identity": stats(recon, result["reference"], TOLERANCES["identity"]),
                       "attention": stats(result["z_all"], kernel_z, TOLERANCES[dtype]["attention"]),
                       "output": stats(recon, kernel_o, TOLERANCES[dtype]["output"])}
-            ok = all(check["allclose"] for check in checks.values())
+            ok = reconstruction_passes({layer: checks}, dtype)          # 판정 규칙: validation.RULE (v3)
             valid &= ok
             report[layer] = {
                 "passed": ok, **{f"{name}_max_abs": check["max_abs"] for name, check in checks.items()},
-                "output_relative": checks["output"]["relative"], "output_worst_excess": checks["output"]["worst_excess"],
+                "attention_relative": checks["attention"]["relative"], "output_relative": checks["output"]["relative"],
+                "output_worst_excess": checks["output"]["worst_excess"],
+                "elementwise_allclose": {name: check["allclose"] for name, check in checks.items()},
                 "row_sum_max_error": float((result["row_sums"].double() - 1).abs().max()),
                 "o_norm_mean": float(kernel_o.norm(dim=-1).mean()),
                 "share": {name: round(value, 6) for name, value in result["share"].items()}}

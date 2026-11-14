@@ -6,7 +6,9 @@ python -m experiments.step6_contribution.validate_real --dtypes bfloat16
 
 - 입력: validation.real_cases 규칙으로 고정한 3개 (실험 B 선택 절반: 3장·middle, 4장·first, 5장·last)
 - 층: L21–24 (0부터 센 디코더 층 20–23), 질문 토큰: 마지막 vision_end 다음부터 마지막 입력 토큰까지 (STEP 5-3B와 같음)
-- 재구성: 층별 c_image_i, c_nonimage를 더해 모델 attention 출력과 비교 (허용 오차는 validation.TOLERANCES, 실행 전에 고정)
+- 재구성: 층별 c_image_i, c_nonimage를 더해 모델 attention 출력과 비교. 판정은 validation.RULE (고정본 v3: 항등식은
+  원소별 allclose, attention·output은 층별 상대 오차 fp32 ≤ 1e-5 / bf16 ≤ 2⁻⁶). v2의 원소별 판정은 fp32 5장 입력
+  L22에서 모델 fp32 커널 반올림만으로 1% 넘어 실패했다 (기록: real_3b_fail_v2.json)
   재계산은 float64 (STEP 6-2 본 실행 추출과 같음). float32 재계산은 항등식 검사가 합산 순서 반올림만으로 1e-5를
   넘을 수 있어 바꿨다 (작은 모델 모의 실행에서 발견, 실제 모델 실행 전, 허용 오차는 그대로)
 - 개입: 별도 무개입 실행에서 뽑은 c_N을 λ = 3으로 더함. λ = 0 동일성, 지정 층·토큰에만 직접 수정이 있는지 확인.
@@ -24,7 +26,7 @@ import torch
 from src.common.config import read_yaml
 from src.common.paths import project_path
 from src.core.causal_plan import load_plan
-from experiments.step6_contribution.validation import intervention, prepare_real, real_cases, reconstruction
+from experiments.step6_contribution.validation import RULE, intervention, prepare_real, real_cases, reconstruction
 
 
 MODEL_DIR = "cache/models/Qwen/Qwen2.5-VL-3B-Instruct"
@@ -54,7 +56,9 @@ def main():
 
     plan = load_plan(read_yaml(project_path("configs/data/step5_causal_split.yaml")))
     items = real_cases(plan)
+    config = read_yaml(project_path("configs/experiments/step6_contribution.yaml"))
     report = {"started_at": datetime.now(timezone.utc).isoformat(timespec="seconds"), "device": args.device,
+              "frozen_dir": config["frozen_dir"], "reconstruction_rule": RULE,
               "gpu": torch.cuda.get_device_name(0) if args.device == "cuda" else platform.processor(),
               "torch": torch.__version__, "transformers": transformers.__version__, "layers": LAYERS, "scale": SCALE,
               "runs": {}}

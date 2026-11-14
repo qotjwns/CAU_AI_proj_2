@@ -1,6 +1,7 @@
 """STEP 6-2 실행 경로 자체 시험 (CPU, 실제 3B 가중치를 쓰지 않음). 서버에서도 GPU 단계 전에 --model로 돌린다.
 
---model: 무작위 가중치의 작은 Qwen2.5-VL(4층, STEP 5-3 자체 시험과 같은 축소 설정)과 합성 이미지.
+--model: 재구성 판정 규칙(v3: 항등식 원소별, attention·output 층별 상대 오차) 회귀 시험과,
+  무작위 가중치의 작은 Qwen2.5-VL(4층, STEP 5-3 자체 시험과 같은 축소 설정)과 합성 이미지.
   1. 기여 추출 재구성 검사 통과, BasisAccumulator·fit_bases = directions.fit_basis(SVD)
   2. 빠른 경로 개입(SuffixAddition) = 참조 경로(model.generate 전체 prefill + OutputAddition), 모든 조건 행
   3. 개입 위치: 대상 층 suffix 행 = 개입 전 + λv (비트 동일), λ = 0 행·대상 앞 층은 그대로
@@ -33,7 +34,7 @@ from experiments.step6_contribution.conditions import condition_rows, stage_work
 from experiments.step6_contribution.contribution import attention_modules
 from experiments.step6_contribution.runtime import (
     BasisAccumulator, Directions, SuffixAddition, build_vectors, extract, fit_bases, reference_rows, run_batches)
-from experiments.step6_contribution.validation import reconstruction
+from experiments.step6_contribution.validation import reconstruction, reconstruction_passes
 
 
 TINY_LAYERS = (1, 2)
@@ -79,6 +80,24 @@ class Probe:
     def remove(self):
         for handle in self.handles:
             handle.remove()
+
+
+def rule_test():
+    """재구성 판정 규칙 (v3): 항등식은 원소별, attention·output은 층별 상대 오차 (fp32 1e-5, bf16 2⁻⁶)."""
+    def layer(identity=True, attention=(True, 1e-7), output=(True, 1e-7)):
+        return {"identity": {"allclose": identity, "relative": 0.0},
+                "attention": {"allclose": attention[0], "relative": attention[1]},
+                "output": {"allclose": output[0], "relative": output[1]}}
+    f32, b16 = torch.float32, torch.bfloat16
+    # 실제 3B fp32 5장 입력 L22 (v2 실패 기록): 원소별 allclose 실패, 상대 2.0e-6 → 통과
+    require(reconstruction_passes({21: layer(output=(False, 2.0e-6))}, f32), "fp32 rounding case must pass")
+    require(not reconstruction_passes({21: layer(output=(True, 2e-5))}, f32), "fp32 relative 2e-5 must fail")
+    require(not reconstruction_passes({20: layer(), 21: layer(attention=(True, 2e-5))}, f32), "any layer must fail")
+    require(not reconstruction_passes({21: layer(identity=False)}, f32), "identity failure must fail")
+    require(reconstruction_passes({21: layer(output=(False, 3.1e-3))}, b16), "bf16 relative 3.1e-3 must pass")
+    require(not reconstruction_passes({21: layer(output=(True, 0.02))}, b16), "bf16 relative 0.02 must fail")
+    require(not reconstruction_passes({21: layer(identity=False)}, b16), "bf16 identity failure must fail")
+    return True
 
 
 def model_test(dtype):
@@ -286,6 +305,7 @@ def main():
     args = parser.parse_args()
     require(args.model or args.simulate, "Choose --model and/or --simulate")
     if args.model:
+        print("[rule]", rule_test())
         for dtype in (torch.float32, torch.bfloat16):
             print(f"[model {dtype}]", model_test(dtype))
     if args.simulate:
