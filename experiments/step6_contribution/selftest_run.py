@@ -4,7 +4,8 @@
   1. 기여 추출 재구성 검사 통과, BasisAccumulator·fit_bases = directions.fit_basis(SVD)
   2. 빠른 경로 개입(SuffixAddition) = 참조 경로(model.generate 전체 prefill + OutputAddition), 모든 조건 행
   3. 개입 위치: 대상 층 suffix 행 = 개입 전 + λv (비트 동일), λ = 0 행·대상 앞 층은 그대로
-  4. 크기 0 행 = 무개입 행, 무개입 행은 다른 행의 벡터와 무관, 개입은 출력을 바꾼다
+  4. 크기 0 행 = 무개입 행, 무개입 행은 다른 행의 벡터와 무관 (같은 크기 batch의 전부 무개입 실행과 비트 동일, v2),
+     개입은 출력을 바꾼다
   5. 벡터: Parallel + Orthogonal = Full, Random·크기 맞춤 노름, seed 재현·항목별 차이, 평균 차이(raw)는 토큰마다 같음
   float32(정확성)와 bfloat16(실행 가능성) 두 번 돈다.
 --simulate: 서버 단계 모의 실행. 작은 모델로 basis(풀 입력 일부) → 연습 실행(실제 연습 항목 12개, 실제 COCO 이미지)
@@ -164,9 +165,12 @@ def model_test(dtype):
         zero = fast[-1]
         require(abs(zero["margin"] - fast[0]["margin"]) <= identity and zero["raw"] == fast[0]["raw"],
                 "The zero-size row differs from the no-intervention row")
-        alone, _ = runner.run_suffix(case, prefix, 1)
-        require(abs(alone[0]["margin"] - fast[0]["margin"]) <= identity,
-                "The no-intervention row depends on the other rows of the batch")
+        # 무개입 행이 다른 행의 벡터와 무관한지: 같은 크기 batch에서 모든 행이 무개입인 실행과 비트 단위로 같아야 한다.
+        # (v2) batch 1 실행과 비교하면 batch 크기에 따라 CPU 커널 반올림이 달라 float32 1e-5를 넘을 수 있다 (서버에서 발견).
+        idle, _ = runner.run_suffix(case, prefix, len(rows))
+        keys = ("margin", "margin_fp32", "margin_bf16", "margin_bf16_variant", "raw")
+        require(all(idle[0][k] == fast[0][k] for k in keys),
+                "The no-intervention row depends on the other rows' vectors (same batch size, not bit-identical)")
         changes = [abs(r["margin"] - fast[0]["margin"]) for r, s in zip(fast, rows) if s["lam"] != 0]
         require(statistics.median(changes) > (1e-4 if exact else 1e-3), "Interventions barely change the output")
         results["median_abs_margin_change"] = statistics.median(changes)

@@ -16,7 +16,24 @@ dirs:
   pilot: results/step6/qwen2_5_vl_3b/contribution/pilot
   main: results/step6/qwen2_5_vl_3b/contribution/main
   evaluation: results/step6/qwen2_5_vl_3b/contribution/evaluation
-frozen_dir: results/step6/qwen2_5_vl_3b/contribution/frozen/v1
+frozen_dir: results/step6/qwen2_5_vl_3b/contribution/frozen/v2      # v1 보존. v2 = 서버 자체 시험 검사 하나 수정
+revision:                            # 사용자 승인 2026-11-14, STEP 6-2 GPU 출력 전 (서버에서 CPU 자체 시험만 돌았음)
+  version: v2
+  previous_version: v1
+  made_before_any_step6_2_gpu_output: true
+  approved_by: "user, 2026-11-14"
+  reason: >-
+    On the GPU server (torch 2.14.1+cu132, with transformers 5.23.0 and again with 5.22.2) the first stage stopped in
+    the CPU self-test experiments/step6_contribution/selftest_run.py --model (float32): the check "the no-intervention
+    row does not depend on the other rows" compared the no-intervention row of an 18-row batch with a separate batch-1
+    run at a float32 margin tolerance of 1e-5. A different batch size uses different CPU kernels, so the last digits
+    can differ; the check passed locally. The experiment never compares across batch sizes (every Delta m uses the
+    no-intervention row of the same batch, as STEP 5-3B), and vector leakage into lambda-0 rows is already checked bit
+    for bit by the locality check, which passed on the server. No real-model stage had run: the real 3B validation,
+    basis, pilot and main produced no output.
+  changes:
+    - "selftest_run.py: the check compares the no-intervention row with the no-intervention row of a same-size batch whose rows are all without intervention, and requires bit-identical margins and text (stricter than the former 1e-5)."
+  unchanged: "preregistration, design, verification thresholds, stop conditions, plan files, every other code file"
 comparison_5_3b:                     # 부가 분석: 같은 입력의 5-3B 강화 결과와 나란히 (로컬 평가에서만 읽음)
   main_dir: results/step5/qwen2_5_vl_3b/attention/main
   files: [run.json, conditions.jsonl, main_check.json]
