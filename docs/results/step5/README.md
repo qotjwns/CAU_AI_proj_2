@@ -99,6 +99,13 @@ N 위치별·장수별 C와 Δm(N) (`step5_3/exploratory_b_subgroups.csv`)
 - 클래스 CI는 CSV에 있다.
 - 구간은 위치·장수를 모두 합친 선택 절반에서 골랐다. 위치·장수별 값은 그 구간에서 잰 것이다.
 
+위치·장수별 실제 답 변화율 (추가 분석, 2026-11-14, exploratory): `step5_3/exploratory_b_answer_flip_analysis.md`
+- 표: `exploratory_b_answer_flip_by_position.csv`, `exploratory_b_answer_flip_by_nimages.csv`
+- 계산 방법: 저장된 입력별 결과에 기존 평가와 같은 부트스트랩(1,000회, seed 42)을 적용했다. 새 실행은 없다.
+- 기존 표 값과 비트 단위로 같은지 56개 검사를 했고 모두 통과했다.
+- N-first에서는 N보다 P 대조 쪽 답이 더 많이 바뀐다 (강화 N 0.020, P 0.222).
+  다만 P 대조가 N-first에서는 항상 N보다 뒤 자리에 있어서, 위치 효과와 구분되지 않는다 (보고서의 주의사항 참고).
+
 ### Descriptive (판정과 무관)
 
 - `step5_3/figures/descriptive_a_layer_curves.png`: 실험 A 층별 목표 답 비율 (같은 묶음 donor, C1 donor; 복원·오염; 두 절반).
