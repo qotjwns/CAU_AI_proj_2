@@ -281,6 +281,42 @@ python -m experiments.step5_causal.visualize
 - 평가 원칙 (사전 기록): 게이트의 PPP 유지율은 선별하지 않은 P 이미지(STEP 4의 PPP 입력)로 측정한다.
   5-2·5-2b의 P 이미지는 Probe 양성으로 고른 것이라 유지율을 낙관적으로 만든다.
 
+## STEP 6. 이미지별 Attention 기여 개입 (confirmatory, 사전 등록 v1)
+
+질문 토큰에서 N 이미지가 attention output에 보탠 몫(기여 c_N)을 L21–24에서 키웠을 때(o' = o + 3·v, o_proj 뒤 residual 앞)
+False-Yes 입력의 margin이 내려가는지 확인합니다. 설계·결정: `docs/plans/step6_attention_contribution.md` (§13이 6-2).
+- **조건:**
+  - Full N: c_N
+  - Parallel / Orthogonal: P 기여 부분공간 안 / 밖 성분. 기저는 STEP 3 풀의 P 기여로 만들고, 중심화 없이 설명 비율 90%를 씁니다.
+  - Random: 같은 크기의 무작위 방향, 5회 평균
+  - Mean Difference: μ_N − μ_P (STEP 3 풀), 원래 크기와 크기 맞춤
+- **주 판정 (확증 절반 False-Yes 2,501개, 97.5% N 이미지 군집):** 최소 효과는 둘 다 −0.25이고, 판정 구조는 5-3B와 같습니다.
+  - H1: Δm(Full) − Δm(Random) ≤ −0.25
+  - H2: Δm(Orthogonal) − Δm(Parallel) ≤ −0.25
+- **데이터 재사용:** 이 실험은 기존 데이터를 다시 쓰는 사전 등록 후속 실험입니다. 확증 절반은 이미 5-3B 판정에 쓰였으므로, 독립 확증은 새 데이터나 다른 모델로 해야 합니다.
+
+```bash
+# 계획 (CPU, GPU 출력 전, 덮어쓰기 금지): STEP 3 풀 입력, 연습·본 실행 항목, 이미지 겹침 0·N 충분성 검사
+python -m experiments.step6_contribution.plan
+# 자체 시험 (CPU): 6-1 분해 검증, 작은 모델 개입 경로·서버 단계 모의 실행, 가짜 결과 평가 판정
+python -m experiments.step6_contribution.selftest
+python -m experiments.step6_contribution.selftest_run --model --simulate
+python -m experiments.step6_contribution.selftest_eval
+# 사전 등록 고정 (덮어쓰기 금지) → 서버 업로드 묶음 (코드 tar + 계획·고정본·COCO 이미지 1,072장)
+python -m experiments.step6_contribution.freeze
+bash scripts/step6_contribution_bundle.sh
+
+# [GPU] 서버: 실제 3B 검증 → basis(P 기저·평균 차이) → 연습 실행·검사 → 시간 추정(8시간 한도) → 본 실행·검사 → 결과 tar
+bash scripts/step6_contribution_gpu.sh
+
+# 평가 (로컬 CPU, 한 번만)
+python -m experiments.step6_contribution.evaluate --check-only
+python -m experiments.step6_contribution.evaluate
+```
+
+- 결과: `results/step6/qwen2_5_vl_3b/contribution/` (`frozen/v1`, `basis`, `pilot`, `main`, `evaluation`),
+  실제 3B 검증 `results/step6/qwen2_5_vl_3b/contribution_validation/real_3b.json`
+
 ## 결과 위치
 
 | 단계 | 표·텐서 | 그림 |
@@ -293,6 +329,7 @@ python -m experiments.step5_causal.visualize
 | STEP 5-2 | `results/step5/qwen2_5_vl_3b/accumulation/` (`frozen/`, `pilot/`, `extraction/`, `extraction_vision_fp32/`, `evaluation/`) | `reports/step5/qwen2_5_vl_3b/accumulation/` (`exploratory/` 포함) |
 | STEP 5-2b | `data/step5_position/`, `results/step5/qwen2_5_vl_3b/position/` (`frozen/`, `pilot/`, `extraction/`) | — |
 | STEP 5-3 | `data/step5_causal/`, `results/step5/qwen2_5_vl_3b/{patching,attention}/` (`frozen/`, `pilot/`, `main/`, `evaluation/`) | `reports/step5/qwen2_5_vl_3b/causal/` |
+| STEP 6 | `data/step6_contribution/`, `results/step6/qwen2_5_vl_3b/contribution/` (`frozen/`, `basis/`, `pilot/`, `main/`, `evaluation/`) | — |
 
 설정 파일은 `configs/` (데이터 `data/`, 모델 `models/`, 단계별 `experiments/`)에 있습니다.
 `data/`·`results/`·`reports/`는 git에 없으며, 서버 백업 tar 복원 방법은 `BACKUP_README.md`에 있습니다.

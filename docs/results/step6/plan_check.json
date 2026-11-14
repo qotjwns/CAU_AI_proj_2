@@ -1,0 +1,123 @@
+{
+  "status": "passed",
+  "overlap": {
+    "step3_pool_images": 310,
+    "by_id": {
+      "5-2": {
+        "images": 762,
+        "overlap": 0
+      },
+      "5-2b": {
+        "images": 762,
+        "overlap": 0
+      },
+      "5-3": {
+        "images": 762,
+        "overlap": 0
+      }
+    },
+    "by_file_sha256": {
+      "step3_pool_unique_files": 310,
+      "evaluation_unique_files": 762,
+      "overlap": 0
+    },
+    "passed": true
+  },
+  "sufficiency": {
+    "criteria": {
+      "min_n_images_per_class_mixed": 5,
+      "min_p_images_per_class": 5,
+      "min_n_slots_mixed": 1000,
+      "min_p_slots_mixed": 1000,
+      "min_p_slots_basis": 1000
+    },
+    "slots": {
+      "p_slots_basis": 3894,
+      "n_slots_mixed": 1923,
+      "p_slots_mixed": 2694
+    },
+    "classes": 20,
+    "n_images_per_class_mixed": {
+      "bed": 8,
+      "bench": 8,
+      "bowl": 8,
+      "bus": 8,
+      "car": 8,
+      "cat": 8,
+      "chair": 8,
+      "couch": 8,
+      "dining table": 8,
+      "dog": 8,
+      "horse": 8,
+      "laptop": 8,
+      "motorcycle": 8,
+      "person": 8,
+      "pizza": 8,
+      "toilet": 8,
+      "train": 8,
+      "truck": 8,
+      "tv": 8,
+      "umbrella": 8
+    },
+    "p_images_per_class": {
+      "bed": 8,
+      "bench": 8,
+      "bowl": 8,
+      "bus": 8,
+      "car": 8,
+      "cat": 8,
+      "chair": 8,
+      "couch": 8,
+      "dining table": 8,
+      "dog": 8,
+      "horse": 8,
+      "laptop": 8,
+      "motorcycle": 8,
+      "person": 8,
+      "pizza": 8,
+      "toilet": 8,
+      "train": 8,
+      "truck": 8,
+      "tv": 8,
+      "umbrella": 8
+    },
+    "unique_n_images_mixed": 157,
+    "unique_p_images": 159,
+    "passed": true
+  },
+  "counts": {
+    "pool_inputs": 2332,
+    "pool_mixed_inputs": 1539,
+    "pool_composition": {
+      "N+N+N": 393,
+      "N+P+P": 385,
+      "P+N+N": 384,
+      "P+N+P": 385,
+      "P+P+N": 385,
+      "P+P+P": 400
+    },
+    "pilot_one_negative": 9,
+    "pilot_all_positive": 3,
+    "main_one_negative": 2501,
+    "main_all_positive": 1985,
+    "main_all_positive_batches": 7931,
+    "pilot_all_positive_batches": 12
+  },
+  "files_sha256": {
+    "data/step6_contribution/pool_inputs.jsonl": "60312b5d6b86626666990b71a83731bec52dc8761e609a5d82b086f57a8018bd",
+    "data/step6_contribution/items.json": "f2b55eff3a266d67ee9f020a700a8084741fc18d54db3c07a0fac526ab5976c0"
+  },
+  "sources_sha256": {
+    "data/balanced3/inference_cases/inference_groups_top20_seed42_A_cases.jsonl": "7b451d9157b3ecdf3ad718476e2df512f5bd22f1064455807bd2006d6bc07757",
+    "data/balanced3/inference_cases/inference_groups_top20_seed42_B_cases.jsonl": "93674992553393ebb02cd3dc528ab8ad67c1e96c9d5d589ca88bb4829d377f2b",
+    "data/step5_accumulation/step5_seed52_cases.jsonl": "f73796d62f158ca6f63ea82d0048ff52b918cf4a70158f4a44bcdcddab74fb74",
+    "data/step5_position/step5b_position_cases.jsonl": "9d0f634b6a8c954087c3750307832099c7ca05268458e498e04315a7d5ac922b",
+    "configs/data/step5_causal_split.yaml": "2680858d54428482f969d6f51e6f0d12956eca2495340f1cec68e79e88048620",
+    "data/step5_causal/plan_check.json": "3512aebbfd5c0794f1faa50e273c048a005638571ef1481afd31f878da776e40",
+    "data/step5_causal/split.json": "4b87267da5006c50c9529531fe49f4cc846c774f57aed7f5d94e0ecc2812d32a",
+    "data/step5_causal/inputs.jsonl": "cf7148cdfd5f5ec6e99f8ce5cdb08f6ead1bef06b1e85d7f8fe82ecd47134140",
+    "data/step5_causal/a_units.jsonl": "64f321ac5ad5556b85428658bd208711c510294b3774df8f7ec95ae74036a9ef",
+    "data/step5_causal/a_allp.jsonl": "8ce99869e63dd967e343127d84fc3328cd8b4601ba7d0889b469f0880c62516a",
+    "data/step5_causal/b_items.jsonl": "73e2388e2de9a4c7b5df120da72058548888e23644d070724d1c26e732d13c7a"
+  }
+}
