@@ -106,6 +106,15 @@ N 위치별·장수별 C와 Δm(N) (`step5_3/exploratory_b_subgroups.csv`)
 - N-first에서는 N보다 P 대조 쪽 답이 더 많이 바뀐다 (강화 N 0.020, P 0.222).
   다만 P 대조가 N-first에서는 항상 N보다 뒤 자리에 있어서, 위치 효과와 구분되지 않는다 (보고서의 주의사항 참고).
 
+P 대조의 상대 위치별 재집계 (후속 분석, 2026-11-14, exploratory): `step5_3/exploratory_b_relative_position_analysis.md`
+- 표: `exploratory_b_middle_relative_position.csv` (N middle 입력, P가 N 앞/뒤), `exploratory_b_p_control_relative_position.csv`
+  (모든 위치, N 위치 구성과 위치별 구성 요소 포함)
+- 기존 집계와 대조하는 검사 20개가 모두 통과했다.
+- middle 안에서는 P가 N 앞이든 뒤든 Δm(P)의 부호가 같다 (강화 +0.068 / +0.097, 차단 −0.155 / −0.216).
+  모든 위치를 합쳤을 때 보이는 차이는 대부분 N 위치 구성(N-first는 모두 P-after-N)에서 온다.
+- 'N 뒤 이미지 토큰이 N 관련 정보를 실을 가능성'을 뒷받침하는 정도는 제한적이다.
+  P의 상대 위치와 P/N 의미가 분리되지 않았고, attention 재분배 효과도 섞여 있다.
+
 ### Descriptive (판정과 무관)
 
 - `step5_3/figures/descriptive_a_layer_curves.png`: 실험 A 층별 목표 답 비율 (같은 묶음 donor, C1 donor; 복원·오염; 두 절반).
